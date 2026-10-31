@@ -72,7 +72,7 @@ class _MeshStatusScreenState extends State<MeshStatusScreen> {
           const SnackBar(
             backgroundColor: Color(0xFF1E222D),
             content: Text(
-              '⚠️ Unable to start BLE Mesh Radio. Ensure Bluetooth is enabled on device and Nearby Devices permission is granted.',
+              '⚠️ Unable to start BLE Mesh Radio. Ensure Bluetooth is enabled on device and "Nearby Devices" permission is granted.',
               style: TextStyle(color: Colors.white, fontSize: 12),
             ),
             duration: Duration(seconds: 4),
@@ -434,6 +434,8 @@ class _MeshStatusScreenState extends State<MeshStatusScreen> {
     );
   }
 
+
+
   Widget _buildStatTile(String label, String value, String subtext, Color color, IconData icon) {
     return Container(
       padding: const EdgeInsets.all(12),
@@ -459,6 +461,8 @@ class _MeshStatusScreenState extends State<MeshStatusScreen> {
       ),
     );
   }
+
+
 
   Color _getStateColor(MeshPacketState state) {
     switch (state) {
