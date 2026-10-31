@@ -93,26 +93,27 @@ def process_mesh_packet(db: Session, packet: MeshPacket) -> dict[str, Any]:
         if not existing_sos:
             sos_code = f"SOS-MESH-{str(uuid.uuid4())[:6].upper()}"
 
-            # Predict Risk & Calculate Priority
-            ml_risk = predict_risk_at_location(packet.latitude, packet.longitude)
+            # Predict Real-Time Hazard Risk & Priority using Real Weather & OSRM Distance
+            from app.services.weather_service import calculate_real_sos_priority
 
-            vuln_score = 0.5
-            if packet.payload and packet.payload.vulnerabilities:
-                vuln_score = 0.85
-
-            scores = calculate_priority_score(
+            vulns = packet.payload.vulnerabilities if packet.payload and packet.payload.vulnerabilities else []
+            p_res = calculate_real_sos_priority(
+                lat=packet.latitude,
+                lon=packet.longitude,
                 severity=packet.severity,
-                vulnerability_score=vuln_score,
-                zone_risk_score=0.5,
-                isolation_score=0.75,
-                time_decay=0.0,
-                medical_urgency=0.0,
-                ml_risk=ml_risk,
+                people_count=packet.payload.people_count if packet.payload and packet.payload.people_count else 1,
+                vulnerabilities=vulns,
+                emergency_type="BLE Mesh Emergency",
+                db=db,
             )
+            final_priority = p_res["priority_score"]
+            tel = p_res.get("real_telemetry", {})
+            real_info = f" | Real Weather: {tel.get('temperature_c')}°C, Rain: {tel.get('rainfall_24h_mm')}mm, OSRM Route: {tel.get('osrm_road_distance_km')}km to {tel.get('nearest_shelter')}"
 
             notes = f"Mesh Hop Count: {len(packet.hops)}. Trail: {' -> '.join(packet.hops)}"
             if packet.payload and packet.payload.vulnerabilities:
                 notes += f" | Needs: {', '.join(packet.payload.vulnerabilities)}"
+            notes += real_info
 
             new_sos = SOSRequest(
                 sos_code=sos_code,
@@ -123,7 +124,7 @@ def process_mesh_packet(db: Session, packet: MeshPacket) -> dict[str, Any]:
                 emergency_type="MESH_EMERGENCY",
                 severity=packet.severity,
                 status="PENDING",
-                priority_score=scores["total_score"],
+                priority_score=final_priority,
                 notes=notes,
                 via_mesh="TRUE",
                 hops_count=len(packet.hops),

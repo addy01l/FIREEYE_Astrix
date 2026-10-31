@@ -193,3 +193,4 @@ class BleMeshAdapter {
     _eventStreamController.close();
   }
 }
+

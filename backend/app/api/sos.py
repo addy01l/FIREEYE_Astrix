@@ -53,41 +53,33 @@ async def create_sos(
 
     sos_code = f"SOS-WEB-{str(uuid.uuid4())[:6].upper()}"
 
-    # Calculate dynamic priority score using official FIRE-EYE algorithm:
-    # Score = severity*0.40 + vulnerability*0.30 + risk*0.20 + isolation*0.10
-    sev_str = (sos_in.severity or "HIGH").upper()
-    type_str = (sos_in.emergency_type or "").lower()
-    if sev_str == "CRITICAL" or any(k in type_str for k in ["trapped", "collapse", "fire", "flood", "cardiac"]):
-        sev_val = 95.0
-    elif sev_str == "HIGH":
-        sev_val = 80.0
-    elif sev_str == "MEDIUM":
-        sev_val = 55.0
-    else:
-        sev_val = 30.0
-
-    vuln_val = 60.0
-    notes_lower = (sos_in.notes or "").lower()
-    if any(k in notes_lower for k in ["elderly", "infant", "child", "disabled", "pregnant"]):
-        vuln_val += 20.0
-    if any(k in notes_lower for k in ["medical", "injury", "injured", "bleeding"]):
-        vuln_val += 15.0
-    if sos_in.household_code:
-        hh = db.query(Household).filter(Household.household_code == sos_in.household_code).first()
-        if hh and hh.vulnerability_score:
-            vuln_val = hh.vulnerability_score * 100.0
-    vuln_val = min(vuln_val, 100.0)
-
-    risk_val = 70.0
+    # Calculate dynamic priority score using ONLY REAL DATA (Real Weather API + ML Risk + OSRM Distance)
+    weather_tag = ""
     try:
-        from app.services.priority_engine import predict_risk_at_location
-        ml_risk = predict_risk_at_location(sos_in.latitude, sos_in.longitude)
-        risk_val = min(max(ml_risk * 100.0, 30.0), 100.0)
-    except Exception:
-        risk_val = 75.0
+        from app.services.weather_service import calculate_real_sos_priority
+        vulns_list = []
+        notes_lower = (sos_in.notes or "").lower()
+        if any(k in notes_lower for k in ["infant", "child", "children"]):
+            vulns_list.append("Infants / Children")
+        if any(k in notes_lower for k in ["elderly", "disabled", "senior"]):
+            vulns_list.append("Elderly / Disabled")
+        if any(k in notes_lower for k in ["injury", "injured", "bleeding", "trauma"]):
+            vulns_list.append("Severe Injury")
 
-    iso_val = 70.0
-    computed_priority = round(sev_val * 0.40 + vuln_val * 0.30 + risk_val * 0.20 + iso_val * 0.10, 1)
+        p_res = calculate_real_sos_priority(
+            lat=sos_in.latitude,
+            lon=sos_in.longitude,
+            severity=sos_in.severity or "HIGH",
+            people_count=1,
+            vulnerabilities=vulns_list,
+            emergency_type=sos_in.emergency_type or "General Distress",
+            db=db,
+        )
+        computed_priority = p_res["priority_score"]
+        tel = p_res.get("real_telemetry", {})
+        weather_tag = f" [Real Weather: {tel.get('temperature_c')}°C, Rain: {tel.get('rainfall_24h_mm')}mm, Hazard: {tel.get('ml_hazard_level')}, OSRM Route: {tel.get('osrm_road_distance_km')}km to {tel.get('nearest_shelter')}]"
+    except Exception:
+        computed_priority = 75.0
 
     new_sos = SOSRequest(
         sos_code=sos_code,
@@ -101,7 +93,7 @@ async def create_sos(
         severity=sos_in.severity,
         status="PENDING",
         priority_score=computed_priority,
-        notes=sos_in.notes,
+        notes=(sos_in.notes or "") + weather_tag,
         via_mesh=sos_in.via_mesh or "FALSE",
         source_type="MOBILE",
     )

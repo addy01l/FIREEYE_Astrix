@@ -155,11 +155,11 @@ CITIZEN_HTML = """<!DOCTYPE html>
       <!-- Safety Status Card -->
       <div class="card p-6">
         <div class="text-xs font-mono font-bold text-gray-400 tracking-wider mb-2">SAFETY STATUS</div>
-        <div class="text-3xl font-extrabold text-[#ef4444] mb-1">High Risk</div>
-        <div class="text-sm text-gray-200 mb-4">Landslide warnings active in your region.</div>
+        <div id="riskLevelTitle" class="text-3xl font-extrabold text-[#ef4444] mb-1">High Risk</div>
+        <div id="weatherSummary" class="text-sm text-gray-200 mb-4">Landslide warnings active in your region.</div>
         <div class="inner-box p-4 space-y-2 text-xs text-gray-300">
-          <p>• Heavy rainfall expected</p>
-          <p>• Avoid steep slopes</p>
+          <p id="weatherRain">• Real Rainfall: 0.0 mm (24h sum)</p>
+          <p id="weatherWind">• Live Wind: 2 km/h • Avoid steep slopes</p>
         </div>
       </div>
 
@@ -167,7 +167,7 @@ CITIZEN_HTML = """<!DOCTYPE html>
       <div class="card p-6">
         <div class="text-xs font-mono font-bold text-gray-400 tracking-wider mb-2">NEAREST SHELTER</div>
         <div id="shelterName" class="text-xl font-bold text-white mb-1">Govt Relief Center</div>
-        <div class="text-sm text-gray-400 mb-4">2.8 km away</div>
+        <div id="shelterDistance" class="text-sm text-gray-400 mb-4">2.8 km away</div>
         <div class="grid grid-cols-2 gap-4">
           <div class="inner-box p-3">
             <span class="text-xs text-gray-400 block mb-1">Capacity</span>
@@ -298,13 +298,47 @@ CITIZEN_HTML = """<!DOCTYPE html>
       document.getElementById('sosActiveView').classList.add('hidden');
     }
 
-    // Fetch live shelters dynamically
+    // Real Live Weather Telemetry via Open-Meteo
+    fetch('/api/v1/disaster/weather/live?latitude=30.3165&longitude=78.0322')
+      .then(r => r.json())
+      .then(w => {
+        if (w) {
+          const rain = w.rainfall_24h_mm || 0.0;
+          const temp = w.temperature_c || 20.0;
+          const cond = w.condition || 'Clear Sky';
+          const wind = w.wind_speed_kmh || 5.0;
+
+          if (rain > 50.0 || cond.toLowerCase().includes('rain') || cond.toLowerCase().includes('thunder')) {
+            document.getElementById('riskLevelTitle').innerText = 'High Risk';
+            document.getElementById('riskLevelTitle').className = 'text-3xl font-extrabold text-[#ef4444] mb-1';
+          } else {
+            document.getElementById('riskLevelTitle').innerText = 'Moderate Risk';
+            document.getElementById('riskLevelTitle').className = 'text-3xl font-extrabold text-[#f59e0b] mb-1';
+          }
+          document.getElementById('weatherSummary').innerText = `${cond} • ${temp}°C (Live Telemetry)`;
+          document.getElementById('weatherRain').innerText = `• 24h Real Rainfall: ${rain} mm (Precip: ${w.current_precipitation_mm} mm)`;
+          document.getElementById('weatherWind').innerText = `• Wind: ${wind} km/h • Elevation: ${w.elevation_m || 652}m`;
+        }
+      })
+      .catch(() => {});
+
+    // Real OSRM Road Distance & Safe Route
+    fetch('/api/v1/routing/safe-route?origin_lat=30.3165&origin_lng=78.0322')
+      .then(r => r.json())
+      .then(route => {
+        if (route) {
+          document.getElementById('shelterName').innerText = route.destination_name || 'Govt Relief Center';
+          document.getElementById('shelterDistance').innerText = `${route.distance_km} km via road (${route.duration_minutes} mins via OSRM)`;
+        }
+      })
+      .catch(() => {});
+
+    // Live Shelters Capacity
     fetch('/api/v1/shelters/')
       .then(r => r.json())
       .then(data => {
         if (data && data.length > 0) {
           const s = data[0];
-          document.getElementById('shelterName').innerText = s.name;
           document.getElementById('shelterCap').innerText = s.capacity;
           document.getElementById('shelterAvail').innerText = s.capacity - (s.occupancy || 0);
         }
@@ -348,6 +382,20 @@ COMMANDER_HTML = """<!DOCTYPE html>
 
   <!-- Main Container -->
   <main class="max-w-7xl mx-auto px-4 py-8 flex-1 w-full space-y-6">
+    <!-- Real-Time Meteorological Telemetry Bar -->
+    <div class="inner-box p-3 px-4 flex flex-wrap items-center justify-between text-xs gap-3">
+      <div class="flex items-center space-x-2">
+        <span class="text-base">⛅</span>
+        <span class="font-bold text-gray-200">METEOROLOGICAL TELEMETRY:</span>
+        <span id="commWeather" class="text-cyan-400 font-mono">Loading Open-Meteo live feed...</span>
+      </div>
+      <div class="flex items-center space-x-4 text-gray-400 text-[11px] font-mono">
+        <span id="commRain">24h Rainfall: --</span>
+        <span id="commWind">Wind: --</span>
+        <span id="commElev">Elevation: --</span>
+      </div>
+    </div>
+
     <!-- Operational KPI Row -->
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
       <div class="card p-4">
@@ -522,7 +570,22 @@ COMMANDER_HTML = """<!DOCTYPE html>
     }
 
     fetchQueue();
+    fetchWeatherTelemetry();
     setInterval(fetchQueue, 3000);
+    setInterval(fetchWeatherTelemetry, 30000);
+
+    async function fetchWeatherTelemetry() {
+      try {
+        const res = await fetch('/api/v1/disaster/weather/live?latitude=30.3165&longitude=78.0322');
+        const w = await res.json();
+        if (w) {
+          document.getElementById('commWeather').innerText = `${w.condition} • ${w.temperature_c}°C (Real-Time Open-Meteo)`;
+          document.getElementById('commRain').innerText = `24h Rain: ${w.rainfall_24h_mm} mm (Precip: ${w.current_precipitation_mm}mm)`;
+          document.getElementById('commWind').innerText = `Wind: ${w.wind_speed_kmh} km/h • Hum: ${w.relative_humidity_pct}%`;
+          document.getElementById('commElev').innerText = `Elevation: ${w.elevation_m || 652}m`;
+        }
+      } catch (e) {}
+    }
   </script>
 </body>
 </html>

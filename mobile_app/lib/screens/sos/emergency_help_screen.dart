@@ -12,8 +12,9 @@ import '../../providers/alert_provider.dart';
 import '../../providers/incident_provider.dart';
 import '../../providers/shelter_provider.dart';
 import '../../services/sos_service.dart';
-import '../../services/mesh/mesh_manager.dart';
+import '../../core/network/api_client.dart';
 import '../mesh/mesh_status_screen.dart';
+import '../../services/mesh/mesh_manager.dart';
 import '../../widgets/status_chip.dart';
 
 class EmergencyHelpScreen extends StatefulWidget {
@@ -48,6 +49,15 @@ class _EmergencyHelpScreenState extends State<EmergencyHelpScreen> with SingleTi
   String? _activeBeaconId;
   DateTime? _beaconTime;
   bool _submitting = false;
+
+  // Real-time telemetry state
+  String _riskLevel = 'High Risk';
+  Color _riskColor = const Color(0xFFEF4444);
+  String _weatherSummary = 'Landslide warnings active in your region.';
+  String _weatherRainfall = '• Heavy rainfall expected';
+  String _weatherWind = '• Avoid steep slopes';
+  String _shelterName = 'Govt Relief Center';
+  String _shelterDistanceText = '2.8 km away';
 
   final List<Map<String, dynamic>> _emergencyTypes = [
     {'title': 'Trapped / Structural Collapse', 'icon': LucideIcons.building2, 'color': AppColors.emergencyRed},
@@ -114,7 +124,54 @@ class _EmergencyHelpScreenState extends State<EmergencyHelpScreen> with SingleTi
         _gpsStatus = 'Grid GPS locked: 30.3165° N, 78.0322° E';
         _locating = false;
       });
+      _fetchRealTelemetry();
     }
+  }
+
+  Future<void> _fetchRealTelemetry() async {
+    try {
+      final res = await ApiClient.instance.get('/disaster/weather/live?latitude=$_latitude&longitude=$_longitude');
+      if (res.statusCode == 200 && res.data != null) {
+        final data = res.data as Map<String, dynamic>;
+        if (mounted) {
+          setState(() {
+            final temp = data['temperature_c'] ?? 20;
+            final rain = (data['rainfall_24h_mm'] as num?)?.toDouble() ?? 0.0;
+            final wind = (data['wind_speed_kmh'] as num?)?.toDouble() ?? 5.0;
+            final humidity = data['relative_humidity_pct'] ?? 60;
+            final cond = data['condition'] ?? 'Overcast';
+
+            if (rain > 50.0 || cond.toString().toLowerCase().contains('rain') || cond.toString().toLowerCase().contains('thunder')) {
+              _riskLevel = 'High Risk';
+              _riskColor = const Color(0xFFEF4444);
+            } else {
+              _riskLevel = 'Moderate Risk';
+              _riskColor = const Color(0xFFF59E0B);
+            }
+
+            _weatherSummary = '$cond • ${temp.toString()}°C live';
+            _weatherRainfall = '• Real-Time Rainfall: ${rain.toStringAsFixed(1)} mm (24h sum)';
+            _weatherWind = '• Real Wind: ${wind.toStringAsFixed(1)} km/h • Humidity: $humidity%';
+          });
+        }
+      }
+    } catch (_) {}
+
+    try {
+      final routeRes = await ApiClient.instance.get('/routing/safe-route?origin_lat=$_latitude&origin_lng=$_longitude');
+      if (routeRes.statusCode == 200 && routeRes.data != null) {
+        final r = routeRes.data as Map<String, dynamic>;
+        if (mounted) {
+          setState(() {
+            final dist = r['distance_km'];
+            final dur = r['duration_minutes'];
+            final dest = r['destination_name'] ?? 'Govt Relief Center';
+            _shelterName = dest.toString();
+            _shelterDistanceText = '$dist km via road ($dur mins OSRM)';
+          });
+        }
+      }
+    } catch (_) {}
   }
 
   Future<void> _broadcastSos() async {
@@ -1000,16 +1057,16 @@ class _EmergencyHelpScreenState extends State<EmergencyHelpScreen> with SingleTi
           ),
           const SizedBox(height: 10),
           Text(
-            'High Risk',
+            _riskLevel,
             style: AppTheme.sans.copyWith(
               fontSize: 26,
               fontWeight: FontWeight.w900,
-              color: const Color(0xFFEF4444), // Vibrant red-orange from screenshot
+              color: _riskColor,
             ),
           ),
           const SizedBox(height: 4),
           Text(
-            'Landslide warnings active in your region.',
+            _weatherSummary,
             style: AppTheme.sans.copyWith(
               fontSize: 13,
               color: AppColors.textLight,
@@ -1029,9 +1086,9 @@ class _EmergencyHelpScreenState extends State<EmergencyHelpScreen> with SingleTi
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildBulletItem('Heavy rainfall expected'),
+                _buildBulletItem(_weatherRainfall),
                 const SizedBox(height: 6),
-                _buildBulletItem('Avoid steep slopes'),
+                _buildBulletItem(_weatherWind),
               ],
             ),
           ),
@@ -1066,8 +1123,8 @@ class _EmergencyHelpScreenState extends State<EmergencyHelpScreen> with SingleTi
     final shelters = shelterProvider?.shelters ?? [];
     final nearest = shelters.isNotEmpty ? shelters.first : null;
 
-    final name = nearest?.name ?? 'Govt Relief Center';
-    final distance = nearest != null ? '${(nearest.latitude.abs() % 4 + 1.2).toStringAsFixed(1)} km away' : '2.8 km away';
+    final name = nearest?.name ?? _shelterName;
+    final distance = _shelterDistanceText;
     final capacity = nearest?.capacity ?? 120;
     final available = nearest?.availableBeds ?? 64;
 

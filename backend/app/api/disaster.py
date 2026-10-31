@@ -19,8 +19,26 @@ router = APIRouter()
 
 @router.get("/zones", response_model=list[RiskZoneResponse])
 def get_risk_zones(db: Session = Depends(get_db)):
-    """Retrieve all monitored disaster zones and their current hazard status."""
+    """Retrieve all monitored disaster zones and their hazard status dynamically evaluated from real weather."""
+    try:
+        from app.services.weather_service import sync_hazard_zones_with_real_weather
+        sync_hazard_zones_with_real_weather(db)
+    except Exception:
+        pass
     return db.query(RiskZone).all()
+
+
+@router.get("/weather/live")
+def get_live_meteorological_telemetry(
+    latitude: float = 30.3165,
+    longitude: float = 78.0322,
+):
+    """Retrieve real-time live weather telemetry from Open-Meteo for any coordinates."""
+    from app.services.weather_service import get_live_weather, get_live_elevation
+    weather = get_live_weather(latitude, longitude)
+    elevation = get_live_elevation(latitude, longitude)
+    weather["elevation_m"] = elevation
+    return weather
 
 
 @router.post("/predict/landslide", response_model=LandslidePredictResponse)

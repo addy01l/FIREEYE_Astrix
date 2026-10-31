@@ -275,3 +275,4 @@ class MeshPacketModel {
     return hmac.convert(bytes).toString();
   }
 }
+
