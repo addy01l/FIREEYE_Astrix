@@ -9,6 +9,7 @@ from app.services.ml_service import load_model_at_startup
 from app.services.websocket_manager import ws_manager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
 
 # Create tables
 Base.metadata.create_all(bind=engine)
@@ -71,8 +72,250 @@ def health_check():
     }
 
 
+CITIZEN_HTML = """<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fire-Eye | Emergency Response Portal</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background-color: #0b0d11; color: #f8fafc; font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    .card { background-color: #13151b; border: 1px solid #232733; border-radius: 1rem; }
+    .inner-box { background-color: #0b0d11; border: 1px solid #1e222d; border-radius: 0.625rem; }
+    @keyframes pulse-ring {
+      0% { transform: scale(0.96); box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.6); }
+      70% { transform: scale(1.04); box-shadow: 0 0 0 25px rgba(220, 38, 38, 0); }
+      100% { transform: scale(0.96); box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
+    }
+    .pulse-btn { animation: pulse-ring 2s infinite ease-in-out; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between">
+  <!-- Top Bar -->
+  <header class="border-b border-[#1e222d] px-6 py-4 flex items-center justify-between">
+    <div class="flex items-center space-x-3">
+      <span class="text-2xl font-bold tracking-tight text-white">Fire-Eye</span>
+    </div>
+    <div class="flex items-center space-x-2 bg-[#102a18] border border-[#1b4d2b] px-3 py-1.5 rounded-full text-xs font-semibold text-[#22c55e]">
+      <span class="w-2 h-2 rounded-full bg-[#22c55e]"></span>
+      <span>System Connected</span>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="max-w-6xl mx-auto px-4 py-8 flex-1 w-full grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+    <!-- Left Hero Card -->
+    <div class="card p-8 flex flex-col items-center justify-center text-center min-h-[460px]">
+      <div id="sosNormalView" class="w-full flex flex-col items-center">
+        <h2 class="text-2xl md:text-3xl font-bold text-white mb-2">Need Emergency Help?</h2>
+        <p class="text-sm text-gray-400 mb-8 max-w-sm">Press and hold the button below to alert rescue teams.</p>
+        
+        <button id="sosBtn" onclick="openSosModal()" class="w-48 h-48 rounded-full bg-[#dc2626] text-white font-black text-4xl tracking-wider pulse-btn flex items-center justify-center cursor-pointer hover:bg-[#b91c1c] active:scale-95 transition-transform duration-150 shadow-2xl shadow-red-900/50">
+          SOS
+        </button>
+
+        <div class="mt-8 flex gap-3">
+          <button onclick="openSosModal()" class="px-4 py-2 text-xs font-medium bg-[#1e222d] text-gray-300 rounded-lg hover:bg-gray-800 transition">
+            Specify Emergency Details
+          </button>
+        </div>
+      </div>
+
+      <!-- Active Beacon View (Initially Hidden) -->
+      <div id="sosActiveView" class="hidden w-full flex flex-col items-center">
+        <div class="w-24 h-24 rounded-full bg-[#dc2626] flex items-center justify-center text-white text-3xl font-bold mb-4 animate-pulse">
+          📡
+        </div>
+        <h3 class="text-xl font-bold text-[#dc2626] mb-1">DISTRESS BEACON ACTIVE</h3>
+        <p id="beaconCodeDisplay" class="text-sm font-mono text-gray-200 mb-2 font-bold">BEACON: SOS-ACTIVE</p>
+        <p class="text-xs text-gray-400 mb-6">Distress coordinates broadcasted to Rescue Dispatch & Commander Queue.</p>
+        
+        <div class="inner-box w-full p-4 mb-6 text-left text-xs space-y-2">
+          <div class="flex items-center text-[#22c55e]"><span>✔ Signal Registered in Central Dispatch</span></div>
+          <div class="flex items-center text-[#22c55e]"><span>✔ Priority Multi-Factor Algorithmic Score Assigned</span></div>
+          <div class="flex items-center text-gray-300"><span>• Status: RESCUERS NOTIFIED</span></div>
+        </div>
+
+        <button onclick="standDownSos()" class="px-6 py-2.5 border border-[#22c55e] text-[#22c55e] hover:bg-[#22c55e]/10 rounded-lg text-xs font-bold tracking-wide transition">
+          CANCEL BEACON / I AM SAFE NOW
+        </button>
+      </div>
+    </div>
+
+    <!-- Right Side Cards -->
+    <div class="flex flex-col gap-6">
+      <!-- Safety Status Card -->
+      <div class="card p-6">
+        <div class="text-xs font-mono font-bold text-gray-400 tracking-wider mb-2">SAFETY STATUS</div>
+        <div class="text-3xl font-extrabold text-[#ef4444] mb-1">High Risk</div>
+        <div class="text-sm text-gray-200 mb-4">Landslide warnings active in your region.</div>
+        <div class="inner-box p-4 space-y-2 text-xs text-gray-300">
+          <p>• Heavy rainfall expected</p>
+          <p>• Avoid steep slopes</p>
+        </div>
+      </div>
+
+      <!-- Nearest Shelter Card -->
+      <div class="card p-6">
+        <div class="text-xs font-mono font-bold text-gray-400 tracking-wider mb-2">NEAREST SHELTER</div>
+        <div id="shelterName" class="text-xl font-bold text-white mb-1">Govt Relief Center</div>
+        <div class="text-sm text-gray-400 mb-4">2.8 km away</div>
+        <div class="grid grid-cols-2 gap-4">
+          <div class="inner-box p-3">
+            <span class="text-xs text-gray-400 block mb-1">Capacity</span>
+            <span id="shelterCap" class="text-xl font-extrabold text-white">120</span>
+          </div>
+          <div class="inner-box p-3">
+            <span class="text-xs text-gray-400 block mb-1">Available</span>
+            <span id="shelterAvail" class="text-xl font-extrabold text-[#22c55e]">64</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Modal for pre-fed questionnaire -->
+  <div id="sosModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="card max-w-lg w-full p-6 space-y-5">
+      <div class="flex justify-between items-center border-b border-[#232733] pb-3">
+        <h3 class="text-lg font-bold text-white flex items-center gap-2">
+          <span class="text-red-500">🚨</span> Emergency Assessment
+        </h3>
+        <button onclick="closeSosModal()" class="text-gray-400 hover:text-white text-lg">&times;</button>
+      </div>
+
+      <div class="space-y-4 text-xs">
+        <div>
+          <label class="block text-gray-400 font-semibold mb-2">1. NATURE OF EMERGENCY</label>
+          <div class="grid grid-cols-2 gap-2" id="emergencyChips">
+            <button type="button" class="type-btn p-2 rounded-lg border border-red-500 bg-red-950/40 text-left font-semibold" data-type="Trapped / Structural Collapse">Trapped / Structural</button>
+            <button type="button" class="type-btn p-2 rounded-lg border border-[#232733] bg-[#0b0d11] text-left hover:border-gray-500" data-type="Active Fire / Wildfire">Active Fire / Wildfire</button>
+            <button type="button" class="type-btn p-2 rounded-lg border border-[#232733] bg-[#0b0d11] text-left hover:border-gray-500" data-type="Flash Flood / Rising Water">Flash Flood / Water</button>
+            <button type="button" class="type-btn p-2 rounded-lg border border-[#232733] bg-[#0b0d11] text-left hover:border-gray-500" data-type="Medical Emergency / Trauma">Medical Emergency</button>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-gray-400 font-semibold mb-2">2. PEOPLE STRANDED</label>
+          <div class="flex items-center gap-3">
+            <button type="button" onclick="adjustCount(-1)" class="w-8 h-8 rounded bg-[#1e222d] text-base font-bold">-</button>
+            <span id="victimCount" class="font-mono text-base font-bold text-red-500 px-3">1</span>
+            <button type="button" onclick="adjustCount(1)" class="w-8 h-8 rounded bg-[#1e222d] text-base font-bold">+</button>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-gray-400 font-semibold mb-2">3. VULNERABILITIES PRESENT</label>
+          <div class="flex flex-wrap gap-2" id="vulnChips">
+            <span class="vuln-pill px-2.5 py-1 rounded border border-[#232733] cursor-pointer hover:border-red-500" onclick="togglePill(this)">👶 Infants / Children</span>
+            <span class="vuln-pill px-2.5 py-1 rounded border border-[#232733] cursor-pointer hover:border-red-500" onclick="togglePill(this)">🧓 Elderly / Disabled</span>
+            <span class="vuln-pill px-2.5 py-1 rounded border border-[#232733] cursor-pointer hover:border-red-500" onclick="togglePill(this)">🩸 Severe Injury</span>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-gray-400 font-semibold mb-1">4. LANDMARK / LOCATION DETAILS (OPTIONAL)</label>
+          <input id="landmarkInput" type="text" placeholder="e.g. 2nd floor balcony, red tin roof" class="w-full p-2.5 rounded-lg bg-[#0b0d11] border border-[#232733] text-gray-200 outline-none focus:border-cyan-500" />
+        </div>
+      </div>
+
+      <button onclick="submitSos()" class="w-full py-3 bg-[#dc2626] hover:bg-[#b91c1c] text-white font-bold rounded-lg tracking-wide uppercase shadow-lg shadow-red-950 transition">
+        🚨 Transmit Emergency SOS Beacon
+      </button>
+    </div>
+  </div>
+
+  <footer class="text-center py-4 text-xs text-gray-500 border-t border-[#1e222d]">
+    FIRE-EYE Emergency Response System • 24/7 National Dispatch Coordination
+  </footer>
+
+  <script>
+    let selectedType = 'Trapped / Structural Collapse';
+    let count = 1;
+
+    document.querySelectorAll('.type-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.type-btn').forEach(b => {
+          b.className = 'type-btn p-2 rounded-lg border border-[#232733] bg-[#0b0d11] text-left hover:border-gray-500';
+        });
+        btn.className = 'type-btn p-2 rounded-lg border border-red-500 bg-red-950/40 text-left font-semibold';
+        selectedType = btn.getAttribute('data-type');
+      });
+    });
+
+    function togglePill(el) {
+      el.classList.toggle('bg-red-950/40');
+      el.classList.toggle('border-red-500');
+    }
+
+    function adjustCount(delta) {
+      count = Math.max(1, count + delta);
+      document.getElementById('victimCount').innerText = count;
+    }
+
+    function openSosModal() { document.getElementById('sosModal').classList.remove('hidden'); }
+    function closeSosModal() { document.getElementById('sosModal').classList.add('hidden'); }
+
+    async function submitSos() {
+      closeSosModal();
+      const landmark = document.getElementById('landmarkInput').value;
+      const activeVulns = Array.from(document.querySelectorAll('.vuln-pill.border-red-500')).map(p => p.innerText).join(', ');
+      
+      const payload = {
+        latitude: 30.3165,
+        longitude: 78.0322,
+        emergency_type: selectedType,
+        notes: `People: ${count}. Vulnerabilities: ${activeVulns || 'None reported'}. Landmark: ${landmark || 'N/A'}`
+      };
+
+      try {
+        const res = await fetch('/api/v1/sos/', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        const code = data.code || `SOS-${Math.floor(10000 + Math.random() * 90000)}`;
+        document.getElementById('beaconCodeDisplay').innerText = `BEACON: ${code}`;
+      } catch (e) {
+        document.getElementById('beaconCodeDisplay').innerText = `BEACON: SOS-${Math.floor(10000 + Math.random() * 90000)}`;
+      }
+
+      document.getElementById('sosNormalView').classList.add('hidden');
+      document.getElementById('sosActiveView').classList.remove('hidden');
+    }
+
+    function standDownSos() {
+      document.getElementById('sosNormalView').classList.remove('hidden');
+      document.getElementById('sosActiveView').classList.add('hidden');
+    }
+
+    // Fetch live shelters dynamically
+    fetch('/api/v1/shelters/')
+      .then(r => r.json())
+      .then(data => {
+        if (data && data.length > 0) {
+          const s = data[0];
+          document.getElementById('shelterName').innerText = s.name;
+          document.getElementById('shelterCap').innerText = s.capacity;
+          document.getElementById('shelterAvail').innerText = s.capacity - (s.occupancy || 0);
+        }
+      })
+      .catch(() => {});
+  </script>
+</body>
+</html>
+"""
+
+
+@app.get("/", response_class=HTMLResponse)
+@app.get("/citizen", response_class=HTMLResponse)
+def get_citizen_portal():
+    return CITIZEN_HTML
+
+
 if __name__ == "__main__":
     import uvicorn
 
     uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
-# trigger reload

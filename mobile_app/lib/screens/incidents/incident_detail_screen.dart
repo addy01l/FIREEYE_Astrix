@@ -36,30 +36,34 @@ class _IncidentDetailScreenState extends State<IncidentDetailScreen> {
         if (ok) _inc = _inc.copyWith(status: newStatus);
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Status updated to: $newStatus')),
+        SnackBar(
+          backgroundColor: AppColors.safeGreen,
+          content: Text('Incident status updated to: $newStatus'),
+        ),
       );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final priorityScore = _inc.frp ?? 85.0;
 
     return Scaffold(
-      backgroundColor: isDark ? AppColors.darkNavy : AppColors.lightBase,
+      backgroundColor: const Color(0xFF0B0D11),
       appBar: AppBar(
-        title: Text('INCIDENT DOSSIER', style: AppTheme.mono.copyWith(fontSize: 14)),
+        backgroundColor: const Color(0xFF0B0D11),
+        title: Text('INCIDENT DOSSIER', style: AppTheme.mono.copyWith(fontSize: 14, fontWeight: FontWeight.w800, letterSpacing: 1)),
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           // Top Status Bar
           Container(
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: isDark ? AppColors.darkCharcoal : AppColors.lightCard,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+              color: const Color(0xFF13151B),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFF232733)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -80,16 +84,18 @@ class _IncidentDetailScreenState extends State<IncidentDetailScreen> {
                 const SizedBox(height: 10),
                 Text(
                   _inc.title,
-                  style: AppTheme.sans.copyWith(fontSize: 18, fontWeight: FontWeight.w800),
+                  style: AppTheme.sans.copyWith(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.textLight),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 6),
                 Row(
                   children: [
-                    const Icon(LucideIcons.mapPin, size: 14, color: AppColors.textMuted),
+                    const Icon(LucideIcons.mapPin, size: 14, color: AppColors.infoCyan),
                     const SizedBox(width: 4),
-                    Text(
-                      _inc.locationName,
-                      style: AppTheme.sans.copyWith(fontSize: 12, color: AppColors.textMuted),
+                    Expanded(
+                      child: Text(
+                        _inc.locationName,
+                        style: AppTheme.sans.copyWith(fontSize: 12, color: AppColors.textMuted),
+                      ),
                     ),
                   ],
                 ),
@@ -99,106 +105,108 @@ class _IncidentDetailScreenState extends State<IncidentDetailScreen> {
 
           const SizedBox(height: 16),
 
-          // Telemetry Specs
-          Text('TELEMETRY & SENSOR PARAMETERS', style: AppTheme.mono.copyWith(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.textMuted)),
+          // Operational Triage Specs
+          Text(
+            'TRIAGE PARAMETERS & TELEMETRY',
+            style: AppTheme.mono.copyWith(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.textMuted),
+          ),
           const SizedBox(height: 8),
 
           Container(
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: isDark ? AppColors.darkCharcoal : AppColors.lightCard,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+              color: const Color(0xFF13151B),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFF232733)),
             ),
             child: Column(
               children: [
                 _SpecRow(label: 'Ingestion Source', val: _inc.source),
-                const Divider(height: 16),
-                _SpecRow(label: 'Latitude', val: '${_inc.latitude} N'),
-                const Divider(height: 16),
-                _SpecRow(label: 'Longitude', val: '${_inc.longitude} E'),
-                if (_inc.frp != null) ...[
-                  const Divider(height: 16),
-                  _SpecRow(
-                    label: _inc.source.contains('SOS') || _inc.id.startsWith('SOS') ? 'Calculated Priority Score' : 'Fire Radiative Power (FRP)',
-                    val: _inc.source.contains('SOS') || _inc.id.startsWith('SOS') ? '${_inc.frp!.toStringAsFixed(1)} / 100 (Dynamic Algorithm)' : '${_inc.frp} MW',
-                  ),
-                ],
-                if (_inc.brightness != null) ...[
-                  const Divider(height: 16),
-                  _SpecRow(label: 'Brightness Temperature', val: '${_inc.brightness} K'),
-                ],
-                const Divider(height: 16),
-                _SpecRow(label: 'Detection Timestamp', val: _inc.timestamp.toLocal().toString().split('.')[0]),
+                const Divider(color: Color(0xFF232733), height: 16),
+                _SpecRow(label: 'Emergency Category', val: _inc.type),
+                const Divider(color: Color(0xFF232733), height: 16),
+                _SpecRow(
+                  label: 'Triage Priority Score',
+                  val: '${priorityScore.toStringAsFixed(1)} / 100 (${priorityScore >= 75 ? "CRITICAL" : "HIGH"})',
+                  valColor: priorityScore >= 75 ? AppColors.emergencyRed : AppColors.warningOrange,
+                ),
+                const Divider(color: Color(0xFF232733), height: 16),
+                _SpecRow(label: 'Target GPS Coordinates', val: '${_inc.latitude.toStringAsFixed(4)}° N, ${_inc.longitude.toStringAsFixed(4)}° E'),
+                const Divider(color: Color(0xFF232733), height: 16),
+                _SpecRow(label: 'Timestamp Logged', val: _inc.timestamp.toLocal().toString().split('.')[0]),
               ],
             ),
           ),
 
           const SizedBox(height: 16),
 
-          // Tactical Description
-          Text('SITUATION SUMMARY', style: AppTheme.mono.copyWith(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.textMuted)),
+          // Tactical Situation Summary
+          Text(
+            'FIELD SITUATION & CITIZEN REPORT',
+            style: AppTheme.mono.copyWith(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.textMuted),
+          ),
           const SizedBox(height: 8),
 
           Container(
-            padding: const EdgeInsets.all(14),
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: isDark ? AppColors.darkCharcoal : AppColors.lightCard,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+              color: const Color(0xFF13151B),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFF232733)),
             ),
             child: Text(
-              _inc.description,
-              style: AppTheme.sans.copyWith(fontSize: 13, height: 1.45),
+              _inc.description.isNotEmpty ? _inc.description : 'No additional tactical telemetry supplied.',
+              style: AppTheme.sans.copyWith(fontSize: 13, height: 1.45, color: AppColors.textLight),
             ),
           ),
 
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
 
-          // Operational Status Buttons
-          Text('DISPATCH CONTROL', style: AppTheme.mono.copyWith(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.textMuted)),
-          const SizedBox(height: 10),
+          // Action Bar: Dispatch / Update Status
+          Text(
+            'RESPONDER DISPATCH ACTIONS',
+            style: AppTheme.mono.copyWith(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.textMuted),
+          ),
+          const SizedBox(height: 8),
 
           Row(
             children: [
               Expanded(
                 child: ElevatedButton.icon(
-                  icon: const Icon(LucideIcons.truck, size: 16),
-                  label: const Text('DISPATCH SQUAD'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.warningOrange,
+                    backgroundColor: AppColors.infoCyan,
+                    foregroundColor: const Color(0xFF0B0D11),
                     padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   ),
-                  onPressed: _updating ? null : () => _updateStatus('DISPATCHED'),
+                  icon: const Icon(LucideIcons.truck, size: 16),
+                  label: Text(
+                    'DISPATCH SQUAD',
+                    style: AppTheme.mono.copyWith(fontSize: 11, fontWeight: FontWeight.w800),
+                  ),
+                  onPressed: _updating ? null : () => _updateStatus('IN_PROGRESS'),
                 ),
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: ElevatedButton.icon(
-                  icon: const Icon(LucideIcons.checkCircle, size: 16),
-                  label: const Text('MARK RESOLVED'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.safeGreen,
+                    foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  icon: const Icon(LucideIcons.checkCircle2, size: 16),
+                  label: Text(
+                    'MARK RESCUED',
+                    style: AppTheme.mono.copyWith(fontSize: 11, fontWeight: FontWeight.w800),
                   ),
                   onPressed: _updating ? null : () => _updateStatus('RESOLVED'),
                 ),
               ),
             ],
           ),
-
-          const SizedBox(height: 12),
-
-          OutlinedButton.icon(
-            icon: const Icon(LucideIcons.alertTriangle, size: 16),
-            label: const Text('REVERT TO ACTIVE QUEUE'),
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              foregroundColor: AppColors.emergencyRed,
-            ),
-            onPressed: _updating ? null : () => _updateStatus('ACTIVE'),
-          ),
-
           const SizedBox(height: 20),
         ],
       ),
@@ -209,8 +217,9 @@ class _IncidentDetailScreenState extends State<IncidentDetailScreen> {
 class _SpecRow extends StatelessWidget {
   final String label;
   final String val;
+  final Color? valColor;
 
-  const _SpecRow({required this.label, required this.val});
+  const _SpecRow({required this.label, required this.val, this.valColor});
 
   @override
   Widget build(BuildContext context) {
@@ -218,9 +227,18 @@ class _SpecRow extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(label, style: AppTheme.sans.copyWith(fontSize: 12, color: AppColors.textMuted)),
-        Text(val, style: AppTheme.mono.copyWith(fontSize: 12, fontWeight: FontWeight.w700)),
+        Flexible(
+          child: Text(
+            val,
+            style: AppTheme.mono.copyWith(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: valColor ?? AppColors.textLight,
+            ),
+            textAlign: TextAlign.right,
+          ),
+        ),
       ],
     );
   }
 }
-

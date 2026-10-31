@@ -30,8 +30,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.darkCharcoal,
-        title: Text('LOGOUT OFFICIAL SESSION?', style: AppTheme.mono.copyWith(fontSize: 14)),
+        backgroundColor: const Color(0xFF13151B),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: const BorderSide(color: Color(0xFF232733)),
+        ),
+        title: Text('LOGOUT OFFICIAL SESSION?', style: AppTheme.mono.copyWith(fontSize: 14, fontWeight: FontWeight.w700)),
         content: Text(
           'Do you want to log out of the official command console and return to the emergency landing page?',
           style: AppTheme.sans.copyWith(fontSize: 13, color: AppColors.textMuted),
@@ -62,8 +66,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     final anomalyProvider = context.watch<AnomalyProvider>();
     final incidentProvider = context.watch<IncidentProvider>();
     final shelterProvider = context.watch<ShelterProvider>();
@@ -71,24 +73,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final alertProvider = context.watch<AlertProvider>();
 
     return Scaffold(
-      backgroundColor: isDark ? AppColors.darkNavy : AppColors.lightBase,
+      backgroundColor: const Color(0xFF0B0D11),
       appBar: AppBar(
-        title: const BrandLogo(size: 26),
+        backgroundColor: const Color(0xFF0B0D11),
+        elevation: 0,
+        title: const BrandLogo(size: 24),
         actions: [
-          // Backend Health Status Chip
+          // System Status Chip
           Container(
-            margin: const EdgeInsets.only(right: 12),
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            margin: const EdgeInsets.only(right: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
             decoration: BoxDecoration(
-              color: anomalyProvider.isBackendOnline
-                  ? AppColors.safeGreen.withOpacity(0.12)
-                  : AppColors.warningOrange.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(6),
-              border: Border.all(
-                color: anomalyProvider.isBackendOnline
-                    ? AppColors.safeGreen.withOpacity(0.4)
-                    : AppColors.warningOrange.withOpacity(0.4),
-              ),
+              color: const Color(0xFF102A18),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: const Color(0xFF1B4D2B), width: 1),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -96,25 +94,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 Container(
                   width: 6,
                   height: 6,
-                  decoration: BoxDecoration(
-                    color: anomalyProvider.isBackendOnline ? AppColors.safeGreen : AppColors.warningOrange,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF22C55E),
                     shape: BoxShape.circle,
                   ),
                 ),
                 const SizedBox(width: 6),
                 Text(
-                  anomalyProvider.isBackendOnline ? 'FASTAPI LIVE' : 'BACKEND OFFLINE',
+                  'SYSTEM ONLINE',
                   style: AppTheme.mono.copyWith(
-                    fontSize: 9,
+                    fontSize: 10,
                     fontWeight: FontWeight.w700,
-                    color: anomalyProvider.isBackendOnline ? AppColors.safeGreen : AppColors.warningOrange,
+                    color: const Color(0xFF22C55E),
                   ),
                 ),
               ],
             ),
           ),
 
-          // Direct Logout Action
+          // Logout Action
           IconButton(
             tooltip: 'Logout Official Session',
             icon: const Icon(LucideIcons.logOut, size: 18, color: AppColors.emergencyRed),
@@ -135,52 +133,53 @@ class _DashboardScreenState extends State<DashboardScreen> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            // Live Telemetry Banner from verified /api/anomalies/live
-            if (anomalyProvider.anomalies.isNotEmpty) ...[
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppColors.emergencyRed.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: AppColors.emergencyRed.withOpacity(0.4)),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(LucideIcons.flame, color: AppColors.emergencyRed, size: 20),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                'LIVE THERMAL ANOMALIES DETECTED',
-                                style: AppTheme.mono.copyWith(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w800,
-                                  color: AppColors.emergencyRed,
-                                ),
-                              ),
-                              const StatusChip(label: 'FASTAPI STREAM', color: AppColors.infoCyan),
-                            ],
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            '${anomalyProvider.anomalies.length} anomaly records active from backend PostGIS stream.',
-                            style: AppTheme.sans.copyWith(fontSize: 11, color: AppColors.textLight),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+            // Clean Operational Headline
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF13151B),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFF232733)),
               ),
-              const SizedBox(height: 14),
-            ],
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.emergencyRed.withOpacity(0.16),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(LucideIcons.activity, color: AppColors.emergencyRed, size: 20),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'INCIDENT COMMAND RADAR',
+                          style: AppTheme.mono.copyWith(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 1,
+                            color: AppColors.emergencyRed,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${incidentProvider.activeCount} active SOS dispatches • ${anomalyProvider.anomalies.length} hazard hotspots monitored',
+                          style: AppTheme.sans.copyWith(fontSize: 11, color: AppColors.textMuted),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
 
-            // Operational KPI Row
+            const SizedBox(height: 16),
+
+            // Operational KPI Grid (Clean metrics)
             GridView.count(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
@@ -191,35 +190,35 @@ class _DashboardScreenState extends State<DashboardScreen> {
               children: [
                 StatKpiCard(
                   icon: LucideIcons.alertOctagon,
-                  label: 'Active Incidents',
+                  label: 'Active SOS Calls',
                   value: '${incidentProvider.activeCount}',
                   subtext: '${incidentProvider.criticalCount} Critical Priority',
                   tone: incidentProvider.criticalCount > 0 ? KpiTone.critical : KpiTone.neutral,
-                  onTap: () => widget.onNavigateTab?.call(2), // Incidents tab
+                  onTap: () => widget.onNavigateTab?.call(2),
                 ),
                 StatKpiCard(
                   icon: LucideIcons.flame,
-                  label: 'Thermal Hotspots',
+                  label: 'Hazard Zones',
                   value: '${anomalyProvider.anomalies.length}',
-                  subtext: 'From /api/anomalies/live',
+                  subtext: 'Active Threat Sectors',
                   tone: KpiTone.info,
-                  onTap: () => widget.onNavigateTab?.call(1), // Map tab
+                  onTap: () => widget.onNavigateTab?.call(1),
                 ),
                 StatKpiCard(
                   icon: LucideIcons.tent,
                   label: 'Shelter Capacity',
                   value: '${shelterProvider.totalAvailable}',
-                  subtext: 'Beds available across ${shelterProvider.shelters.length} camps',
+                  subtext: 'Beds Available in Relief Camps',
                   tone: KpiTone.safe,
-                  onTap: () => widget.onNavigateTab?.call(4), // Shelters tab
+                  onTap: () => widget.onNavigateTab?.call(4),
                 ),
                 StatKpiCard(
                   icon: LucideIcons.truck,
                   label: 'Rescue Fleet',
                   value: '${rescueProvider.totalVehicles}',
-                  subtext: '${rescueProvider.totalPersonnel} Personnel ready',
+                  subtext: '${rescueProvider.totalPersonnel} Responders on Duty',
                   tone: KpiTone.warning,
-                  onTap: () => widget.onNavigateTab?.call(3), // Rescue Centers tab
+                  onTap: () => widget.onNavigateTab?.call(3),
                 ),
               ],
             ),
@@ -237,7 +236,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 1,
-                      color: isDark ? AppColors.textMuted : AppColors.textSubtle,
+                      color: AppColors.textMuted,
                     ),
                   ),
                   StatusChip(
@@ -253,9 +252,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   margin: const EdgeInsets.only(bottom: 8),
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: isDark ? AppColors.darkCharcoal : AppColors.lightCard,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                    color: const Color(0xFF13151B),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFF232733)),
                   ),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -263,7 +262,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       Container(
                         padding: const EdgeInsets.all(6),
                         decoration: BoxDecoration(
-                          color: (a.severity == 'CRITICAL' ? AppColors.emergencyRed : AppColors.warningOrange).withOpacity(0.12),
+                          color: (a.severity == 'CRITICAL' ? AppColors.emergencyRed : AppColors.warningOrange).withOpacity(0.15),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Icon(
@@ -295,7 +294,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               a.message,
                               style: AppTheme.sans.copyWith(
                                 fontSize: 11,
-                                color: isDark ? AppColors.textLight : AppColors.textDark,
+                                color: AppColors.textLight,
                                 height: 1.3,
                               ),
                             ),
@@ -309,7 +308,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               const SizedBox(height: 14),
             ],
 
-            // Recent Incident Activity & Priority Queue
+            // Active SOS Queue Header
             Row(
               children: [
                 Expanded(
@@ -319,7 +318,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 0.8,
-                      color: isDark ? AppColors.textMuted : AppColors.textSubtle,
+                      color: AppColors.textMuted,
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -331,7 +330,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
                   icon: const Icon(LucideIcons.listOrdered, size: 13, color: AppColors.infoCyan),
-                  label: Text('PRIORITY QUEUE', style: AppTheme.mono.copyWith(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.infoCyan)),
+                  label: Text('TRIAGE QUEUE', style: AppTheme.mono.copyWith(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.infoCyan)),
                   onPressed: () {
                     Navigator.push(context, MaterialPageRoute(builder: (_) => const VictimsScreen()));
                   },
@@ -350,7 +349,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
             const SizedBox(height: 6),
 
+            // Active SOS Cards with priority scores
             ...incidentProvider.incidents.take(4).map((inc) {
+              final priorityScore = inc.frp ?? 85.0;
               return Container(
                 margin: const EdgeInsets.only(bottom: 8),
                 child: InkWell(
@@ -360,13 +361,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       MaterialPageRoute(builder: (_) => IncidentDetailScreen(incident: inc)),
                     );
                   },
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(10),
                   child: Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: isDark ? AppColors.darkCharcoal : AppColors.lightCard,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                      color: const Color(0xFF13151B),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: inc.severity == 'CRITICAL' ? AppColors.emergencyRed.withOpacity(0.4) : const Color(0xFF232733),
+                      ),
                     ),
                     child: Row(
                       children: [
@@ -374,9 +377,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
                             color: inc.severity == 'CRITICAL'
-                                ? AppColors.emergencyRed.withOpacity(0.12)
-                                : AppColors.warningOrange.withOpacity(0.12),
-                            borderRadius: BorderRadius.circular(6),
+                                ? AppColors.emergencyRed.withOpacity(0.15)
+                                : AppColors.warningOrange.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(8),
                           ),
                           child: Icon(
                             inc.type.contains('Fire') ? LucideIcons.flame : LucideIcons.alertTriangle,
@@ -399,35 +402,40 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
-                                  StatusChip(label: inc.status),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: priorityScore >= 75 ? AppColors.emergencyRed.withOpacity(0.18) : AppColors.warningOrange.withOpacity(0.18),
+                                      borderRadius: BorderRadius.circular(4),
+                                      border: Border.all(color: priorityScore >= 75 ? AppColors.emergencyRed : AppColors.warningOrange, width: 0.8),
+                                    ),
+                                    child: Text(
+                                      'PRIORITY ${priorityScore.toStringAsFixed(1)}',
+                                      style: AppTheme.mono.copyWith(
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.w800,
+                                        color: priorityScore >= 75 ? AppColors.emergencyRed : AppColors.warningOrange,
+                                      ),
+                                    ),
+                                  ),
                                 ],
                               ),
-                              const SizedBox(height: 2),
+                              const SizedBox(height: 3),
                               Text(
                                 inc.locationName,
                                 style: AppTheme.sans.copyWith(fontSize: 11, color: AppColors.textMuted),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
-                              const SizedBox(height: 3),
+                              const SizedBox(height: 4),
                               Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  StatusChip(label: inc.source, outlined: true),
-                                  if (inc.frp != null) ...[
-                                    const SizedBox(width: 6),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                      decoration: BoxDecoration(
-                                        color: AppColors.emergencyRed.withOpacity(0.18),
-                                        borderRadius: BorderRadius.circular(4),
-                                        border: Border.all(color: AppColors.emergencyRed, width: 0.8),
-                                      ),
-                                      child: Text(
-                                        'PRIORITY ${inc.frp!.toStringAsFixed(1)}',
-                                        style: AppTheme.mono.copyWith(fontSize: 9, fontWeight: FontWeight.w800, color: AppColors.emergencyRed),
-                                      ),
-                                    ),
-                                  ],
+                                  StatusChip(label: inc.status),
+                                  Text(
+                                    '${inc.latitude.toStringAsFixed(4)}° N, ${inc.longitude.toStringAsFixed(4)}° E',
+                                    style: AppTheme.mono.copyWith(fontSize: 10, color: AppColors.infoCyan),
+                                  ),
                                 ],
                               ),
                             ],
@@ -447,4 +455,3 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 }
-

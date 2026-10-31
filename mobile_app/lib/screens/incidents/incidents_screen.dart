@@ -31,7 +31,6 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final incidentProvider = context.watch<IncidentProvider>();
 
     List<IncidentModel> list = incidentProvider.filteredIncidents;
@@ -44,9 +43,10 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
     }
 
     return Scaffold(
-      backgroundColor: isDark ? AppColors.darkNavy : AppColors.lightBase,
+      backgroundColor: const Color(0xFF0B0D11),
       appBar: AppBar(
-        title: Text('INCIDENT REGISTRY', style: AppTheme.mono.copyWith(fontSize: 14)),
+        backgroundColor: const Color(0xFF0B0D11),
+        title: Text('INCIDENT REGISTRY', style: AppTheme.mono.copyWith(fontSize: 14, fontWeight: FontWeight.w800, letterSpacing: 1)),
         actions: [
           IconButton(
             icon: const Icon(LucideIcons.refreshCw, size: 18),
@@ -71,9 +71,9 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
           // Search & Filter Header
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            decoration: BoxDecoration(
-              color: isDark ? AppColors.darkCharcoal : Colors.white,
-              border: Border(bottom: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.lightBorder)),
+            decoration: const BoxDecoration(
+              color: Color(0xFF13151B),
+              border: Border(bottom: BorderSide(color: Color(0xFF232733))),
             ),
             child: Column(
               children: [
@@ -82,7 +82,7 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
                   style: AppTheme.sans.copyWith(fontSize: 13),
                   onChanged: (val) => setState(() => _searchQuery = val.trim()),
                   decoration: InputDecoration(
-                    hintText: 'Search by facility, sector, or disaster type...',
+                    hintText: 'Search by location, sector, or emergency type...',
                     prefixIcon: const Icon(LucideIcons.search, size: 16),
                     suffixIcon: _searchQuery.isNotEmpty
                         ? IconButton(
@@ -152,6 +152,8 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
                               itemCount: list.length,
                               itemBuilder: (context, idx) {
                                 final inc = list[idx];
+                                final priorityScore = inc.frp ?? 85.0;
+
                                 return Container(
                                   margin: const EdgeInsets.only(bottom: 12),
                                   child: InkWell(
@@ -165,12 +167,12 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
                                     child: Container(
                                       padding: const EdgeInsets.all(14),
                                       decoration: BoxDecoration(
-                                        color: isDark ? AppColors.darkCharcoal : AppColors.lightCard,
+                                        color: const Color(0xFF13151B),
                                         borderRadius: BorderRadius.circular(10),
                                         border: Border.all(
                                           color: inc.severity == 'CRITICAL'
                                               ? AppColors.emergencyRed.withOpacity(0.4)
-                                              : (isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                                              : const Color(0xFF232733),
                                         ),
                                       ),
                                       child: Column(
@@ -183,7 +185,22 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
                                                 children: [
                                                   StatusChip(label: inc.severity),
                                                   const SizedBox(width: 6),
-                                                  StatusChip(label: inc.source, outlined: true),
+                                                  Container(
+                                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                    decoration: BoxDecoration(
+                                                      color: AppColors.emergencyRed.withOpacity(0.18),
+                                                      borderRadius: BorderRadius.circular(4),
+                                                      border: Border.all(color: AppColors.emergencyRed, width: 0.8),
+                                                    ),
+                                                    child: Text(
+                                                      'PRIORITY ${priorityScore.toStringAsFixed(1)}',
+                                                      style: AppTheme.mono.copyWith(
+                                                        fontSize: 9,
+                                                        fontWeight: FontWeight.w800,
+                                                        color: AppColors.emergencyRed,
+                                                      ),
+                                                    ),
+                                                  ),
                                                 ],
                                               ),
                                               StatusChip(label: inc.status),
@@ -211,14 +228,13 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
                                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                             children: [
                                               Text(
-                                                'COORDS: ${inc.latitude.toStringAsFixed(3)}, ${inc.longitude.toStringAsFixed(3)}',
+                                                'COORDS: ${inc.latitude.toStringAsFixed(3)}° N, ${inc.longitude.toStringAsFixed(3)}° E',
                                                 style: AppTheme.mono.copyWith(fontSize: 10, color: AppColors.infoCyan),
                                               ),
-                                              if (inc.frp != null)
-                                                Text(
-                                                  'FRP: ${inc.frp} MW',
-                                                  style: AppTheme.mono.copyWith(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.emergencyRed),
-                                                ),
+                                              Text(
+                                                inc.source,
+                                                style: AppTheme.mono.copyWith(fontSize: 10, color: AppColors.textMuted),
+                                              ),
                                             ],
                                           ),
                                         ],
@@ -251,19 +267,19 @@ class _FilterTab extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: selected ? AppColors.emergencyRed : Colors.transparent,
+          color: selected ? AppColors.infoCyan.withOpacity(0.18) : const Color(0xFF0B0D11),
           borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: selected ? AppColors.infoCyan : const Color(0xFF232733)),
         ),
         child: Text(
           label,
           style: AppTheme.mono.copyWith(
             fontSize: 10,
             fontWeight: FontWeight.w700,
-            color: selected ? Colors.white : AppColors.textMuted,
+            color: selected ? AppColors.infoCyan : AppColors.textMuted,
           ),
         ),
       ),
     );
   }
 }
-

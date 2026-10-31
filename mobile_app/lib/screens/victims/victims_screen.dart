@@ -13,7 +13,6 @@ class VictimsScreen extends StatelessWidget {
   const VictimsScreen({super.key});
 
   void _showTriageActionModal(BuildContext context, VictimModel victim) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     String status = victim.status;
     final notesController = TextEditingController(text: victim.medicalCondition);
 
@@ -30,9 +29,9 @@ class VictimsScreen extends StatelessWidget {
             bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
           ),
           decoration: BoxDecoration(
-            color: isDark ? AppColors.darkCharcoal : Colors.white,
+            color: const Color(0xFF13151B),
             borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-            border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+            border: Border.all(color: const Color(0xFF232733)),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -82,7 +81,7 @@ class VictimsScreen extends StatelessWidget {
               ),
               const SizedBox(height: 12),
 
-              Text('MEDICAL / CONDITION LOG', style: AppTheme.mono.copyWith(fontSize: 10, color: AppColors.textMuted)),
+              Text('CONDITION / RESCUE LOG', style: AppTheme.mono.copyWith(fontSize: 10, color: AppColors.textMuted)),
               const SizedBox(height: 6),
               TextField(
                 controller: notesController,
@@ -115,13 +114,13 @@ class VictimsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final victimProvider = context.watch<VictimProvider>();
 
     return Scaffold(
-      backgroundColor: isDark ? AppColors.darkNavy : AppColors.lightBase,
+      backgroundColor: const Color(0xFF0B0D11),
       appBar: AppBar(
-        title: Text('VICTIM TRIAGE DIRECTORY', style: AppTheme.mono.copyWith(fontSize: 14)),
+        backgroundColor: const Color(0xFF0B0D11),
+        title: Text('RESCUE TRIAGE QUEUE', style: AppTheme.mono.copyWith(fontSize: 14, fontWeight: FontWeight.w800, letterSpacing: 1)),
         actions: [
           IconButton(
             icon: const Icon(LucideIcons.refreshCw, size: 18),
@@ -131,18 +130,18 @@ class VictimsScreen extends StatelessWidget {
       ),
       body: Column(
         children: [
-          // Privacy Banner
+          // Operational Banner
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            color: isDark ? AppColors.darkSurfaceElevated : const Color(0xFFF1F5F9),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            color: const Color(0xFF13151B),
             child: Row(
               children: [
-                const Icon(LucideIcons.lock, size: 14, color: AppColors.infoCyan),
+                const Icon(LucideIcons.listOrdered, size: 14, color: AppColors.infoCyan),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Sensitive personal contact details are redacted pursuant to privacy protocols.',
-                    style: AppTheme.sans.copyWith(fontSize: 10, color: AppColors.textMuted),
+                    'SOS requests dynamically prioritized by vulnerability, severity, risk zone, and isolation index.',
+                    style: AppTheme.sans.copyWith(fontSize: 11, color: AppColors.textMuted),
                   ),
                 ),
               ],
@@ -151,11 +150,11 @@ class VictimsScreen extends StatelessWidget {
 
           Expanded(
             child: victimProvider.isLoading
-                ? const LoadingView(message: 'FETCHING VICTIM REGISTRY...')
+                ? const LoadingView(message: 'FETCHING TRIAGE QUEUE...')
                 : victimProvider.victims.isEmpty
                     ? EmptyStateView(
-                        title: 'NO VICTIM RECORDS',
-                        message: 'No active victim triage files on record.',
+                        title: 'NO ACTIVE SOS CASES',
+                        message: 'All victim requests have been attended to or evacuated.',
                         onRetry: () => victimProvider.fetchVictims(),
                       )
                     : RefreshIndicator(
@@ -169,9 +168,9 @@ class VictimsScreen extends StatelessWidget {
                               margin: const EdgeInsets.only(bottom: 12),
                               padding: const EdgeInsets.all(14),
                               decoration: BoxDecoration(
-                                color: isDark ? AppColors.darkCharcoal : AppColors.lightCard,
+                                color: const Color(0xFF13151B),
                                 borderRadius: BorderRadius.circular(10),
-                                border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                                border: Border.all(color: const Color(0xFF232733)),
                               ),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -182,18 +181,19 @@ class VictimsScreen extends StatelessWidget {
                                       Row(
                                         children: [
                                           Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                                             decoration: BoxDecoration(
-                                              color: AppColors.emergencyRed.withOpacity(0.12),
+                                              color: AppColors.emergencyRed.withOpacity(0.18),
                                               borderRadius: BorderRadius.circular(4),
+                                              border: Border.all(color: AppColors.emergencyRed, width: 0.8),
                                             ),
                                             child: Text(
-                                              'PRIORITY #${v.priorityScore}',
-                                              style: AppTheme.mono.copyWith(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.emergencyRed),
+                                              '#${idx + 1} PRIORITY: ${v.priorityScore}',
+                                              style: AppTheme.mono.copyWith(fontSize: 10, fontWeight: FontWeight.w800, color: AppColors.emergencyRed),
                                             ),
                                           ),
                                           const SizedBox(width: 8),
-                                          Text(v.id, style: AppTheme.mono.copyWith(fontSize: 11, color: AppColors.textMuted)),
+                                          Text(v.id, style: AppTheme.mono.copyWith(fontSize: 11, color: AppColors.infoCyan)),
                                         ],
                                       ),
                                       StatusChip(label: v.status),
@@ -210,16 +210,20 @@ class VictimsScreen extends StatelessWidget {
                                   ),
                                   const SizedBox(height: 8),
                                   Container(
-                                    padding: const EdgeInsets.all(8),
+                                    padding: const EdgeInsets.all(10),
                                     decoration: BoxDecoration(
-                                      color: isDark ? AppColors.darkSurfaceElevated : const Color(0xFFF1F5F9),
+                                      color: const Color(0xFF0B0D11),
                                       borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(color: const Color(0xFF1E222D)),
                                     ),
                                     child: Row(
                                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                       children: [
-                                        Text('Condition: ${v.medicalCondition}', style: AppTheme.sans.copyWith(fontSize: 11)),
-                                        Text('Infants: ${v.hasInfants ? "Yes" : "No"} | Elderly: ${v.hasElderly ? "Yes" : "No"}', style: AppTheme.mono.copyWith(fontSize: 9, color: AppColors.infoCyan)),
+                                        Expanded(
+                                          child: Text('Condition: ${v.medicalCondition}', style: AppTheme.sans.copyWith(fontSize: 11)),
+                                        ),
+                                        Text('Infants: ${v.hasInfants ? "Yes" : "No"} | Elderly: ${v.hasElderly ? "Yes" : "No"}',
+                                            style: AppTheme.mono.copyWith(fontSize: 10, color: AppColors.infoCyan)),
                                       ],
                                     ),
                                   ),
@@ -227,8 +231,9 @@ class VictimsScreen extends StatelessWidget {
                                   Row(
                                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                     children: [
-                                      Text('Phone: ${v.contactNumber}', style: AppTheme.mono.copyWith(fontSize: 10, color: AppColors.textMuted)),
+                                      Text('Contact: ${v.contactNumber}', style: AppTheme.mono.copyWith(fontSize: 10, color: AppColors.textMuted)),
                                       TextButton.icon(
+                                        style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
                                         icon: const Icon(LucideIcons.edit2, size: 12),
                                         label: const Text('UPDATE TRIAGE'),
                                         onPressed: () => _showTriageActionModal(context, v),
@@ -247,4 +252,3 @@ class VictimsScreen extends StatelessWidget {
     );
   }
 }
-
