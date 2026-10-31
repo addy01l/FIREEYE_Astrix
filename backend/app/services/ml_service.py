@@ -32,9 +32,8 @@ def load_model_at_startup():
 
     candidate_paths = [
         os.getenv("ML_MODEL_PATH", ""),
-        os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "fireeye-ai-final", "models", "risk_model.joblib")),
-        os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "ml", "models", "risk_model.joblib")),
         os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "ml", "models", "risk_model.joblib")),
+        os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "ml", "models", "risk_model.joblib")),
         os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "ml", "models", "landslide_model.joblib")),
     ]
 
