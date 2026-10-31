@@ -11,6 +11,7 @@ from app.core.permissions import (
     require_roles,
 )
 from app.database import get_db
+from app.models.household import Household
 from app.models.rescue_assignment import RescueAssignment
 from app.models.sos import SOSRequest
 from app.models.user import User
@@ -51,6 +52,43 @@ async def create_sos(
             return existing_sos
 
     sos_code = f"SOS-WEB-{str(uuid.uuid4())[:6].upper()}"
+
+    # Calculate dynamic priority score using official FIRE-EYE algorithm:
+    # Score = severity*0.40 + vulnerability*0.30 + risk*0.20 + isolation*0.10
+    sev_str = (sos_in.severity or "HIGH").upper()
+    type_str = (sos_in.emergency_type or "").lower()
+    if sev_str == "CRITICAL" or any(k in type_str for k in ["trapped", "collapse", "fire", "flood", "cardiac"]):
+        sev_val = 95.0
+    elif sev_str == "HIGH":
+        sev_val = 80.0
+    elif sev_str == "MEDIUM":
+        sev_val = 55.0
+    else:
+        sev_val = 30.0
+
+    vuln_val = 60.0
+    notes_lower = (sos_in.notes or "").lower()
+    if any(k in notes_lower for k in ["elderly", "infant", "child", "disabled", "pregnant"]):
+        vuln_val += 20.0
+    if any(k in notes_lower for k in ["medical", "injury", "injured", "bleeding"]):
+        vuln_val += 15.0
+    if sos_in.household_code:
+        hh = db.query(Household).filter(Household.household_code == sos_in.household_code).first()
+        if hh and hh.vulnerability_score:
+            vuln_val = hh.vulnerability_score * 100.0
+    vuln_val = min(vuln_val, 100.0)
+
+    risk_val = 70.0
+    try:
+        from app.services.priority_engine import predict_risk_at_location
+        ml_risk = predict_risk_at_location(sos_in.latitude, sos_in.longitude)
+        risk_val = min(max(ml_risk * 100.0, 30.0), 100.0)
+    except Exception:
+        risk_val = 75.0
+
+    iso_val = 70.0
+    computed_priority = round(sev_val * 0.40 + vuln_val * 0.30 + risk_val * 0.20 + iso_val * 0.10, 1)
+
     new_sos = SOSRequest(
         sos_code=sos_code,
         idempotency_key=sos_in.idempotency_key,
@@ -62,6 +100,7 @@ async def create_sos(
         emergency_type=sos_in.emergency_type,
         severity=sos_in.severity,
         status="PENDING",
+        priority_score=computed_priority,
         notes=sos_in.notes,
         via_mesh=sos_in.via_mesh or "FALSE",
         source_type="MOBILE",
@@ -77,9 +116,13 @@ async def create_sos(
             "sos_id": new_sos.id,
             "sos_code": new_sos.sos_code,
             "severity": new_sos.severity,
+            "status": new_sos.status,
+            "priority_score": new_sos.priority_score,
             "latitude": new_sos.latitude,
             "longitude": new_sos.longitude,
             "emergency_type": new_sos.emergency_type,
+            "notes": new_sos.notes,
+            "created_at": new_sos.created_at.isoformat() if new_sos.created_at else datetime.utcnow().isoformat(),
         },
     )
 
@@ -136,9 +179,15 @@ def get_my_sos_requests(
 
 
 @router.get("/{sos_id}", response_model=SOSResponse)
-def get_sos_by_id(sos_id: int, db: Session = Depends(get_db)):
-    """Retrieve details for a single SOS request."""
-    sos = db.query(SOSRequest).filter(SOSRequest.id == sos_id).first()
+def get_sos_by_id(sos_id: str, db: Session = Depends(get_db)):
+    """Retrieve details for a single SOS request by ID or code."""
+    query = db.query(SOSRequest)
+    if str(sos_id).isdigit():
+        sos = query.filter(SOSRequest.id == int(sos_id)).first()
+    else:
+        sos = query.filter(SOSRequest.sos_code == sos_id).first()
+    if not sos:
+        sos = query.filter(SOSRequest.sos_code.ilike(f"%{sos_id}%")).first()
     if not sos:
         raise HTTPException(status_code=404, detail="SOS not found")
     return sos
@@ -146,7 +195,7 @@ def get_sos_by_id(sos_id: int, db: Session = Depends(get_db)):
 
 @router.patch("/{sos_id}/status", response_model=SOSResponse)
 async def update_sos_status(
-    sos_id: int,
+    sos_id: str,
     status_update: SOSStatusUpdate,
     current_user: Optional[User] = Depends(get_optional_user),
     db: Session = Depends(get_db),
@@ -155,7 +204,13 @@ async def update_sos_status(
     Update the triage or rescue operational status of an SOS request.
     Allowed statuses: PENDING, ASSIGNED, DISPATCHED, RESCUED, CANCELLED.
     """
-    sos = db.query(SOSRequest).filter(SOSRequest.id == sos_id).first()
+    query = db.query(SOSRequest)
+    if str(sos_id).isdigit():
+        sos = query.filter(SOSRequest.id == int(sos_id)).first()
+    else:
+        sos = query.filter(SOSRequest.sos_code == sos_id).first()
+    if not sos:
+        sos = query.filter(SOSRequest.sos_code.ilike(f"%{sos_id}%")).first()
     if not sos:
         raise HTTPException(status_code=404, detail="SOS not found")
 

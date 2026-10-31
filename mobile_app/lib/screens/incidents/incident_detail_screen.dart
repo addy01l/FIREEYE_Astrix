@@ -119,7 +119,10 @@ class _IncidentDetailScreenState extends State<IncidentDetailScreen> {
                 _SpecRow(label: 'Longitude', val: '${_inc.longitude} E'),
                 if (_inc.frp != null) ...[
                   const Divider(height: 16),
-                  _SpecRow(label: 'Fire Radiative Power (FRP)', val: '${_inc.frp} MW'),
+                  _SpecRow(
+                    label: _inc.source.contains('SOS') || _inc.id.startsWith('SOS') ? 'Calculated Priority Score' : 'Fire Radiative Power (FRP)',
+                    val: _inc.source.contains('SOS') || _inc.id.startsWith('SOS') ? '${_inc.frp!.toStringAsFixed(1)} / 100 (Dynamic Algorithm)' : '${_inc.frp} MW',
+                  ),
                 ],
                 if (_inc.brightness != null) ...[
                   const Divider(height: 16),

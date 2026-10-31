@@ -238,9 +238,9 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
 
             // Auxiliary Operational Screens
             ListTile(
-              leading: const Icon(LucideIcons.users, size: 20, color: AppColors.infoCyan),
-              title: Text('Victims Registry', style: AppTheme.mono.copyWith(fontSize: 13, fontWeight: FontWeight.w700)),
-              subtitle: Text('Casework & Relief Tracking', style: AppTheme.sans.copyWith(fontSize: 11, color: AppColors.textMuted)),
+              leading: const Icon(LucideIcons.shieldAlert, size: 20, color: AppColors.emergencyRed),
+              title: Text('Rescue Priority Queue', style: AppTheme.mono.copyWith(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.emergencyRed)),
+              subtitle: Text('Civilian SOS Triage & Priority Scoring', style: AppTheme.sans.copyWith(fontSize: 11, color: AppColors.textMuted)),
               onTap: () {
                 Navigator.pop(context);
                 Navigator.push(context, MaterialPageRoute(builder: (_) => const VictimsScreen()));

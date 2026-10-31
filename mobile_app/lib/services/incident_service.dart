@@ -14,10 +14,10 @@ class IncidentService {
       latitude: 30.3662,
       longitude: 77.9221,
       timestamp: DateTime.now().subtract(const Duration(minutes: 18)),
-      description: 'Intense thermal spike near solvent storage tanks. FRP measured at 42.8 MW.',
+      description: 'Intense thermal spike near solvent storage tanks. Priority Score: 92.0.',
       locationName: 'Selaqui Industrial Corridor, Dehradun',
-      source: 'NASA FIRMS VIIRS (375m)',
-      frp: 42.8,
+      source: 'Thermal Sensor Network',
+      frp: 92.0,
       brightness: 368.4,
     ),
     IncidentModel(
@@ -29,65 +29,89 @@ class IncidentService {
       latitude: 30.3842,
       longitude: 78.0754,
       timestamp: DateTime.now().subtract(const Duration(minutes: 45)),
-      description: 'Hill destabilization blocked arterial evacuation link. 2 vehicles affected.',
+      description: 'Hill destabilization blocked arterial evacuation link. Priority Score: 85.0.',
       locationName: 'Rajpur Road / Mussoorie Bypass',
       source: 'Field Observer Report',
-    ),
-    IncidentModel(
-      id: 'INC-7124',
-      title: 'River Swell & Basin Inundation',
-      type: 'Flash Flood',
-      severity: 'WARNING',
-      status: 'ACTIVE',
-      latitude: 30.2921,
-      longitude: 78.0125,
-      timestamp: DateTime.now().subtract(const Duration(hours: 1, minutes: 10)),
-      description: 'Stream water reached 1.2m depth in residential pockets.',
-      locationName: 'Clement Town Drainage Basin',
-      source: 'IMD Sensor Network',
-    ),
-    IncidentModel(
-      id: 'INC-6045',
-      title: 'Refinery Normalized Flare Stack',
-      type: 'Routine Flare',
-      severity: 'SAFE',
-      status: 'RESOLVED',
-      latitude: 30.3420,
-      longitude: 77.9510,
-      timestamp: DateTime.now().subtract(const Duration(hours: 2, minutes: 20)),
-      description: 'Normal process flare within designated environmental tolerance limits.',
-      locationName: 'Petrochemical Refining Unit 3',
-      source: 'XGBoost Baseline Model',
-      frp: 11.2,
-      brightness: 324.1,
+      frp: 85.0,
     ),
   ];
 
   Future<List<IncidentModel>> getIncidents() async {
+    final List<IncidentModel> combined = [];
+
+    // 1. Fetch real active civilian SOS requests from backend
     try {
-      final res = await _client.get(ApiConfig.incidentsEndpoint);
-      if (res.statusCode == 200 && res.data is List) {
-        return (res.data as List).map((item) {
+      final sosRes = await _client.get(ApiConfig.activeSosEndpoint);
+      if (sosRes.statusCode == 200 && sosRes.data is List) {
+        for (final item in (sosRes.data as List)) {
+          final s = item as Map<String, dynamic>;
+          final priority = (s['priority_score'] as num?)?.toDouble() ?? 50.0;
+          final code = s['sos_code']?.toString() ?? 'SOS-${s['id']}';
+          final emergencyType =
+              s['emergency_type']?.toString().replaceAll('_', ' ') ?? 'Civilian SOS';
+          final status = (s['status'] as String? ?? 'PENDING').toUpperCase();
+          final lat = (s['latitude'] as num?)?.toDouble() ?? 0.0;
+          final lng = (s['longitude'] as num?)?.toDouble() ?? 0.0;
+
+          combined.add(IncidentModel(
+            id: code,
+            title: '🚨 SOS: $emergencyType',
+            type: emergencyType,
+            severity: priority >= 75
+                ? 'CRITICAL'
+                : (priority >= 50 ? 'HIGH' : 'WARNING'),
+            status: status == 'PENDING' ? 'ACTIVE' : status,
+            latitude: lat,
+            longitude: lng,
+            timestamp: s['created_at'] != null
+                ? DateTime.tryParse(s['created_at'].toString()) ?? DateTime.now()
+                : DateTime.now(),
+            description:
+                'PRIORITY SCORE: ${priority.toStringAsFixed(1)} (Severity: ${s['severity'] ?? 'HIGH'})\n'
+                '${s['notes'] ?? 'Immediate civilian rescue dispatch requested.'}',
+            locationName: 'GPS Target (${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)})',
+            source: 'Emergency SOS Beacon',
+            frp: priority, // stores priority score for UI badges
+          ));
+        }
+      }
+    } catch (_) {}
+
+    // 2. Fetch Monitored Risk Zones from backend
+    try {
+      final zonesRes = await _client.get(ApiConfig.zonesEndpoint);
+      if (zonesRes.statusCode == 200 && zonesRes.data is List) {
+        for (final item in (zonesRes.data as List)) {
           final zone = item as Map<String, dynamic>;
           final level = (zone['risk_level'] as String? ?? 'LOW').toUpperCase();
-          return IncidentModel(
+          final riskScore = (zone['risk_score'] as num?)?.toDouble() ?? 0.0;
+          combined.add(IncidentModel(
             id: zone['zone_code']?.toString() ?? 'ZONE',
-            title: zone['name'] as String? ?? 'Monitored risk zone',
-            type: 'Landslide Risk',
-            severity: level == 'HIGH' ? 'CRITICAL' : level == 'MEDIUM' ? 'WARNING' : 'SAFE',
+            title: zone['name'] as String? ?? 'Monitored Risk Zone',
+            type: 'Hazard Zone',
+            severity: level == 'HIGH'
+                ? 'CRITICAL'
+                : (level == 'MEDIUM' ? 'WARNING' : 'SAFE'),
             status: level == 'LOW' ? 'RESOLVED' : 'ACTIVE',
-            latitude: (zone['center_lat'] as num?)?.toDouble() ?? 0,
-            longitude: (zone['center_lng'] as num?)?.toDouble() ?? 0,
+            latitude: (zone['center_lat'] as num?)?.toDouble() ?? 0.0,
+            longitude: (zone['center_lng'] as num?)?.toDouble() ?? 0.0,
             timestamp: DateTime.now(),
-            description: 'Risk score ${(zone['risk_score'] as num?)?.toDouble().toStringAsFixed(2) ?? '0.00'}; ${zone['vulnerable_population'] ?? 0} vulnerable people.',
-            locationName: zone['name'] as String? ?? 'Risk zone',
-            source: 'FIRE-EYE risk monitoring',
-          );
-        }).toList();
+            description:
+                'Hazard Risk Score ${(riskScore * 100).toStringAsFixed(1)}; ${zone['vulnerable_population'] ?? 0} residents at risk.',
+            locationName: zone['name'] as String? ?? 'Risk Zone',
+            source: 'FIRE-EYE Risk Sensor',
+            frp: riskScore * 100,
+          ));
+        }
       }
-    } catch (_) {
-      return _localIncidents;
+    } catch (_) {}
+
+    if (combined.isNotEmpty) {
+      // Sort descending so highest priority emergencies appear at the very top
+      combined.sort((a, b) => (b.frp ?? 0).compareTo(a.frp ?? 0));
+      return combined;
     }
+
     return _localIncidents;
   }
 
@@ -106,7 +130,10 @@ class IncidentService {
 
   Future<bool> updateIncidentStatus(String id, String newStatus) async {
     try {
-      final res = await _client.patch('${ApiConfig.incidentsEndpoint}$id', data: {'status': newStatus});
+      final res = await _client.patch(
+        '${ApiConfig.sosEndpoint}$id/status',
+        data: {'status': newStatus},
+      );
       if (res.statusCode == 200) {
         _updateLocalStatus(id, newStatus);
         return true;

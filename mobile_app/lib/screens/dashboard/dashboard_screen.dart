@@ -14,6 +14,7 @@ import '../../widgets/stat_kpi_card.dart';
 import '../../widgets/status_chip.dart';
 import '../auth/login_screen.dart';
 import '../incidents/incident_detail_screen.dart';
+import '../victims/victims_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   final Function(int)? onNavigateTab;
@@ -308,22 +309,42 @@ class _DashboardScreenState extends State<DashboardScreen> {
               const SizedBox(height: 14),
             ],
 
-            // Recent Incident Activity
+            // Recent Incident Activity & Priority Queue
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'RECENT INCIDENT ACTIVITY',
-                  style: AppTheme.mono.copyWith(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 1,
-                    color: isDark ? AppColors.textMuted : AppColors.textSubtle,
+                Expanded(
+                  child: Text(
+                    'ACTIVE SOS QUEUE',
+                    style: AppTheme.mono.copyWith(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.8,
+                      color: isDark ? AppColors.textMuted : AppColors.textSubtle,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
+                TextButton.icon(
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  icon: const Icon(LucideIcons.listOrdered, size: 13, color: AppColors.infoCyan),
+                  label: Text('PRIORITY QUEUE', style: AppTheme.mono.copyWith(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.infoCyan)),
+                  onPressed: () {
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const VictimsScreen()));
+                  },
+                ),
+                const SizedBox(width: 4),
                 TextButton(
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
                   onPressed: () => widget.onNavigateTab?.call(2),
-                  child: Text('VIEW ALL', style: AppTheme.mono.copyWith(fontSize: 10, color: AppColors.infoCyan)),
+                  child: Text('ALL', style: AppTheme.mono.copyWith(fontSize: 10, color: AppColors.textMuted)),
                 ),
               ],
             ),
@@ -394,9 +415,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   StatusChip(label: inc.source, outlined: true),
                                   if (inc.frp != null) ...[
                                     const SizedBox(width: 6),
-                                    Text(
-                                      'FRP ${inc.frp} MW',
-                                      style: AppTheme.mono.copyWith(fontSize: 9, color: AppColors.emergencyRed),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.emergencyRed.withOpacity(0.18),
+                                        borderRadius: BorderRadius.circular(4),
+                                        border: Border.all(color: AppColors.emergencyRed, width: 0.8),
+                                      ),
+                                      child: Text(
+                                        'PRIORITY ${inc.frp!.toStringAsFixed(1)}',
+                                        style: AppTheme.mono.copyWith(fontSize: 9, fontWeight: FontWeight.w800, color: AppColors.emergencyRed),
+                                      ),
                                     ),
                                   ],
                                 ],

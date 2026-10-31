@@ -7,80 +7,86 @@ class VictimService {
 
   static final List<VictimModel> _fallbackVictims = [
     VictimModel(
-      id: 'VIC-901',
-      fullName: 'Ramesh C*** (Protected)',
-      incidentId: 'INC-9481',
-      location: 'Selaqui Sector 2, Factory Perimeter',
+      id: 'SOS-901',
+      fullName: 'Trapped / Structural Collapse',
+      incidentId: 'SOS-901',
+      location: '30.3662, 77.9221',
       status: 'TRAPPED',
       priorityScore: 92,
       hasInfants: false,
       hasElderly: true,
-      medicalCondition: 'Chemical vapor inhalation distress',
-      contactNumber: '+91 94120 *****',
+      medicalCondition: 'Chemical vapor inhalation distress / 3 people trapped',
+      contactNumber: '+91 94120 11111',
       reportedAt: DateTime.now().subtract(const Duration(minutes: 22)),
     ),
     VictimModel(
-      id: 'VIC-902',
-      fullName: 'Anita R*** (Protected)',
-      incidentId: 'INC-8832',
-      location: 'Rajpur Road Hill Slope',
+      id: 'SOS-902',
+      fullName: 'Monsoon Slope Debris Slide',
+      incidentId: 'SOS-902',
+      location: '30.3842, 78.0754',
       status: 'IN TRANSIT',
-      priorityScore: 88,
+      priorityScore: 85,
       hasInfants: true,
       hasElderly: false,
-      medicalCondition: 'Minor laceration on shoulder',
-      contactNumber: '+91 98371 *****',
+      medicalCondition: 'Vehicle overturned on slope / urgent evacuation',
+      contactNumber: '+91 98371 22222',
       reportedAt: DateTime.now().subtract(const Duration(minutes: 50)),
-    ),
-    VictimModel(
-      id: 'VIC-903',
-      fullName: 'Gurmeet S*** (Protected)',
-      incidentId: 'INC-7124',
-      location: 'Clement Town Sub-ward 3',
-      status: 'MEDICAL CARE',
-      priorityScore: 74,
-      hasInfants: false,
-      hasElderly: true,
-      medicalCondition: 'Hypothermia / safe at Doon Relief Center',
-      contactNumber: '+91 97600 *****',
-      reportedAt: DateTime.now().subtract(const Duration(hours: 1, minutes: 15)),
-    ),
-    VictimModel(
-      id: 'VIC-904',
-      fullName: 'Deepak B*** (Protected)',
-      incidentId: 'INC-9481',
-      location: 'Selaqui Sector 3',
-      status: 'RESCUED',
-      priorityScore: 40,
-      hasInfants: false,
-      hasElderly: false,
-      medicalCondition: 'Evacuated without injury',
-      contactNumber: '+91 94111 *****',
-      reportedAt: DateTime.now().subtract(const Duration(hours: 2)),
     ),
   ];
 
   Future<List<VictimModel>> getVictims() async {
     try {
+      // 1. Try prioritized queue from /api/v1/priority/queue
       final res = await _client.get(ApiConfig.victimsEndpoint);
       if (res.statusCode == 200 && res.data is Map<String, dynamic>) {
         final queue = (res.data as Map<String, dynamic>)['queue'];
-        if (queue is List) {
+        if (queue is List && queue.isNotEmpty) {
           return queue.map((item) {
             final v = item as Map<String, dynamic>;
+            final priority = (v['priority_score'] as num?)?.toInt() ?? 75;
+            final code = v['sos_code']?.toString() ?? 'SOS-${v['sos_id']}';
+            final notes = v['notes']?.toString() ?? '';
+            final lat = (v['latitude'] as num?)?.toDouble() ?? 0.0;
+            final lng = (v['longitude'] as num?)?.toDouble() ?? 0.0;
             return VictimModel.fromJson({
-              'id': v['sos_code'] ?? v['sos_id'],
-              'full_name': v['household_code'] ?? 'Emergency caller',
-              'incident_id': v['sos_code'],
-              'location': '${v['latitude']}, ${v['longitude']}',
-              'status': v['status'],
-              'priority_score': v['priority_score'],
-              'has_elderly': (v['elderly_count'] as num?)?.toInt() != 0,
-              'medical_condition': v['medical_needs'],
+              'id': code,
+              'full_name': v['emergency_type']?.toString().replaceAll('_', ' ') ?? 'Civilian SOS Caller',
+              'incident_id': code,
+              'location': '${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)}',
+              'status': v['status'] ?? 'TRAPPED',
+              'priority_score': priority,
+              'has_elderly': (v['elderly_count'] as num?)?.toInt() != 0 || notes.toLowerCase().contains('elderly'),
+              'has_infants': notes.toLowerCase().contains('child') || notes.toLowerCase().contains('infant'),
+              'medical_condition': notes.isNotEmpty ? notes : (v['medical_needs'] ?? 'Immediate triage dispatch required'),
               'reported_at': v['created_at'],
             });
           }).toList();
         }
+      }
+
+      // 2. Fallback to /api/v1/sos/active
+      final sosRes = await _client.get(ApiConfig.activeSosEndpoint);
+      if (sosRes.statusCode == 200 && sosRes.data is List && (sosRes.data as List).isNotEmpty) {
+        return (sosRes.data as List).map((item) {
+          final v = item as Map<String, dynamic>;
+          final priority = (v['priority_score'] as num?)?.toInt() ?? 75;
+          final code = v['sos_code']?.toString() ?? 'SOS-${v['id']}';
+          final notes = v['notes']?.toString() ?? '';
+          final lat = (v['latitude'] as num?)?.toDouble() ?? 0.0;
+          final lng = (v['longitude'] as num?)?.toDouble() ?? 0.0;
+          return VictimModel.fromJson({
+            'id': code,
+            'full_name': v['emergency_type']?.toString().replaceAll('_', ' ') ?? 'Civilian SOS Caller',
+            'incident_id': code,
+            'location': '${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)}',
+            'status': v['status'] ?? 'TRAPPED',
+            'priority_score': priority,
+            'has_elderly': notes.toLowerCase().contains('elderly'),
+            'has_infants': notes.toLowerCase().contains('child') || notes.toLowerCase().contains('infant'),
+            'medical_condition': notes.isNotEmpty ? notes : 'Immediate triage dispatch required',
+            'reported_at': v['created_at'],
+          });
+        }).toList();
       }
     } catch (_) {
       return _fallbackVictims;
@@ -91,10 +97,10 @@ class VictimService {
   Future<bool> updateVictimStatus(String id, String newStatus, {String? notes}) async {
     try {
       final res = await _client.patch(
-        '${ApiConfig.victimsEndpoint}$id',
+        '${ApiConfig.sosEndpoint}$id/status',
         data: {
           'status': newStatus,
-          ...?notes == null ? null : {'medical_condition': notes},
+          if (notes != null && notes.isNotEmpty) 'notes': notes,
         },
       );
       if (res.statusCode == 200) {
