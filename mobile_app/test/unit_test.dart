@@ -1,3 +1,5 @@
+import 'package:mobile_app/core/config/api_config.dart';
+import 'package:mobile_app/core/network/api_client.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mobile_app/models/alert_model.dart';
@@ -124,6 +126,10 @@ void main() {
 
     test('SosService queues offline SOS when network is unreachable', () async {
       SharedPreferences.setMockInitialValues({});
+      final originalUrl = ApiConfig.baseUrl;
+      ApiClient.instance.updateBaseUrl('http://127.0.0.1:59999');
+      addTearDown(() => ApiClient.instance.updateBaseUrl(originalUrl));
+
       final service = SosService();
 
       final res = await service.createSos(

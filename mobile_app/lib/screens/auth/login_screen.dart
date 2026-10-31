@@ -139,14 +139,19 @@ class _LoginScreenState extends State<LoginScreen> {
                           borderRadius: BorderRadius.circular(6),
                           border: Border.all(color: AppColors.darkBorder),
                         ),
+                        constraints: const BoxConstraints(maxWidth: 160),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             const Icon(LucideIcons.server, size: 12, color: AppColors.infoCyan),
                             const SizedBox(width: 6),
-                            Text(
-                              ApiConfig.baseUrl,
-                              style: AppTheme.mono.copyWith(fontSize: 10, color: AppColors.textMuted),
+                            Flexible(
+                              child: Text(
+                                ApiConfig.baseUrl.replaceFirst('https://', '').replaceFirst('http://', ''),
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 1,
+                                style: AppTheme.mono.copyWith(fontSize: 10, color: AppColors.textMuted),
+                              ),
                             ),
                           ],
                         ),

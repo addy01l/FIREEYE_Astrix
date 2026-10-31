@@ -3,7 +3,8 @@ from contextlib import asynccontextmanager
 
 from app.api import api_router
 from app.config import settings
-from app.database import Base, engine
+from app.database import Base, SessionLocal, engine
+from app.seeds.seed_data import seed_hackathon_demo_data
 from app.services.ml_service import load_model_at_startup
 from app.services.websocket_manager import ws_manager
 from fastapi import FastAPI
@@ -17,6 +18,12 @@ Base.metadata.create_all(bind=engine)
 async def lifespan(app: FastAPI):
     # Startup
     load_model_at_startup()
+    try:
+        db = SessionLocal()
+        seed_hackathon_demo_data(db)
+        db.close()
+    except Exception as e:
+        print(f"[FIRE-EYE SEED INFO] Seed check: {e}")
     ws_manager._heartbeat_task = asyncio.create_task(ws_manager.start_heartbeat())
     ws_manager._pubsub_task = asyncio.create_task(ws_manager.start_redis_subscriber())
     yield

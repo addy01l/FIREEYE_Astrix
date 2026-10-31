@@ -55,3 +55,16 @@ node_modules/
 # OS
 .DS_Store
 Thumbs.db
+
+# Repomix & AI dumps
+repomix-output.xml
+*.dump
+
+# Local SQLite databases
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+backend/sql_app.db
+
+

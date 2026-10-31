@@ -1,23 +1,15 @@
-import 'dart:io' show Platform;
-import 'package:flutter/foundation.dart';
-
 class ApiConfig {
   /// Base host configuration
   /// Priority:
-  /// 1. Compile-time --dart-define=BACKEND_BASE_URL=https://your-service.onrender.com
-  /// 2. Android emulator: http://10.0.2.2:8000
-  /// 3. Windows desktop: http://127.0.0.1:8000
-  /// 4. Web: http://localhost:8000
-  /// 5. Physical device: user-configurable in Profile & Settings screen
+  /// 1. Compile-time: --dart-define=BACKEND_BASE_URL=https://fireeye-astrix-backend.onrender.com
+  /// 2. Live production default: https://fireeye-astrix-backend.onrender.com
+  /// 3. Runtime configuration via Profile & Settings screen
+  static const String liveProductionUrl = 'https://fireeye-astrix-backend.onrender.com';
+
   static String get defaultBaseUrl {
     const envUrl = String.fromEnvironment('BACKEND_BASE_URL');
     if (envUrl.isNotEmpty) return envUrl.replaceAll(RegExp(r'/$'), '');
-    if (kIsWeb) return 'http://localhost:8000';
-    try {
-      if (Platform.isAndroid) return 'http://10.0.2.2:8000';
-      if (Platform.isWindows) return 'http://127.0.0.1:8000';
-    } catch (_) {}
-    return 'http://127.0.0.1:8000';
+    return liveProductionUrl;
   }
 
   static String baseUrl = defaultBaseUrl;

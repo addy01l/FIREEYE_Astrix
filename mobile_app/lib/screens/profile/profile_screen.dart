@@ -57,6 +57,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
               runSpacing: 8,
               children: [
                 OutlinedButton.icon(
+                  icon: const Icon(LucideIcons.cloud, size: 14, color: AppColors.emergencyRed),
+                  label: const Text('Render Cloud Live'),
+                  onPressed: () => controller.text = 'https://fireeye-astrix-backend.onrender.com',
+                ),
+                OutlinedButton.icon(
                   icon: const Icon(LucideIcons.smartphone, size: 14),
                   label: const Text('Android (10.0.2.2)'),
                   onPressed: () => controller.text = 'http://10.0.2.2:8000',
