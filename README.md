@@ -115,6 +115,26 @@ The previous web frontend has been decoupled and the backend is ready for Flutte
 - **Physical Device**: `http://<HOST_IP>:8000/api/v1`
 - **Real-time WebSockets**: `ws://10.0.2.2:8000/api/v1/ws/`
 
+### Start mobile app with backend (Windows)
+
+From the repository root, run:
+
+```powershell
+.\start-mobile.ps1
+```
+
+The launcher starts FastAPI on `0.0.0.0:8000`, waits for `/health`, launches
+Flutter, and stops the backend when Flutter exits. Pass `-Device <id>` to select
+a device or `-Release` for a release build:
+
+```powershell
+.\start-mobile.ps1 -Device emulator-5554
+.\start-mobile.ps1 -Release
+```
+
+For a physical device, configure the app gateway to the host computer's LAN IP
+from the login screen. The computer firewall must allow inbound TCP port 8000.
+
 ### Pre-Seeded Test Credentials:
 All accounts use password: **`securepassword`**
 - **Admin**: `admin`
