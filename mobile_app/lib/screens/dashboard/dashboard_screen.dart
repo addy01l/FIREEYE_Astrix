@@ -1,0 +1,421 @@
+import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:provider/provider.dart';
+import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_theme.dart';
+import '../../providers/alert_provider.dart';
+import '../../providers/anomaly_provider.dart';
+import '../../providers/auth_provider.dart';
+import '../../providers/incident_provider.dart';
+import '../../providers/rescue_center_provider.dart';
+import '../../providers/shelter_provider.dart';
+import '../../widgets/brand_logo.dart';
+import '../../widgets/stat_kpi_card.dart';
+import '../../widgets/status_chip.dart';
+import '../auth/login_screen.dart';
+import '../incidents/incident_detail_screen.dart';
+
+class DashboardScreen extends StatefulWidget {
+  final Function(int)? onNavigateTab;
+
+  const DashboardScreen({super.key, this.onNavigateTab});
+
+  @override
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> {
+  void _confirmLogout(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.darkCharcoal,
+        title: Text('LOGOUT OFFICIAL SESSION?', style: AppTheme.mono.copyWith(fontSize: 14)),
+        content: Text(
+          'Do you want to log out of the official command console and return to the emergency landing page?',
+          style: AppTheme.sans.copyWith(fontSize: 13, color: AppColors.textMuted),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('CANCEL'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.emergencyRed),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await context.read<AuthProvider>().logout();
+              if (context.mounted) {
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (_) => const LoginScreen()),
+                  (route) => false,
+                );
+              }
+            },
+            child: const Text('LOGOUT'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final anomalyProvider = context.watch<AnomalyProvider>();
+    final incidentProvider = context.watch<IncidentProvider>();
+    final shelterProvider = context.watch<ShelterProvider>();
+    final rescueProvider = context.watch<RescueCenterProvider>();
+    final alertProvider = context.watch<AlertProvider>();
+
+    return Scaffold(
+      backgroundColor: isDark ? AppColors.darkNavy : AppColors.lightBase,
+      appBar: AppBar(
+        title: const BrandLogo(size: 26),
+        actions: [
+          // Backend Health Status Chip
+          Container(
+            margin: const EdgeInsets.only(right: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: anomalyProvider.isBackendOnline
+                  ? AppColors.safeGreen.withOpacity(0.12)
+                  : AppColors.warningOrange.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(
+                color: anomalyProvider.isBackendOnline
+                    ? AppColors.safeGreen.withOpacity(0.4)
+                    : AppColors.warningOrange.withOpacity(0.4),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 6,
+                  height: 6,
+                  decoration: BoxDecoration(
+                    color: anomalyProvider.isBackendOnline ? AppColors.safeGreen : AppColors.warningOrange,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  anomalyProvider.isBackendOnline ? 'FASTAPI LIVE' : 'BACKEND OFFLINE',
+                  style: AppTheme.mono.copyWith(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w700,
+                    color: anomalyProvider.isBackendOnline ? AppColors.safeGreen : AppColors.warningOrange,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Direct Logout Action
+          IconButton(
+            tooltip: 'Logout Official Session',
+            icon: const Icon(LucideIcons.logOut, size: 18, color: AppColors.emergencyRed),
+            onPressed: () => _confirmLogout(context),
+          ),
+          const SizedBox(width: 4),
+        ],
+      ),
+      body: RefreshIndicator(
+        onRefresh: () async {
+          await Future.wait([
+            anomalyProvider.checkHealthAndFetch(),
+            incidentProvider.fetchIncidents(),
+            shelterProvider.fetchShelters(),
+            rescueProvider.fetchRescueCenters(),
+          ]);
+        },
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            // Live Telemetry Banner from verified /api/anomalies/live
+            if (anomalyProvider.anomalies.isNotEmpty) ...[
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.emergencyRed.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.emergencyRed.withOpacity(0.4)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(LucideIcons.flame, color: AppColors.emergencyRed, size: 20),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'LIVE THERMAL ANOMALIES DETECTED',
+                                style: AppTheme.mono.copyWith(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.emergencyRed,
+                                ),
+                              ),
+                              const StatusChip(label: 'FASTAPI STREAM', color: AppColors.infoCyan),
+                            ],
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '${anomalyProvider.anomalies.length} anomaly records active from backend PostGIS stream.',
+                            style: AppTheme.sans.copyWith(fontSize: 11, color: AppColors.textLight),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+            ],
+
+            // Operational KPI Row
+            GridView.count(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              crossAxisCount: 2,
+              crossAxisSpacing: 10,
+              mainAxisSpacing: 10,
+              childAspectRatio: 1.5,
+              children: [
+                StatKpiCard(
+                  icon: LucideIcons.alertOctagon,
+                  label: 'Active Incidents',
+                  value: '${incidentProvider.activeCount}',
+                  subtext: '${incidentProvider.criticalCount} Critical Priority',
+                  tone: incidentProvider.criticalCount > 0 ? KpiTone.critical : KpiTone.neutral,
+                  onTap: () => widget.onNavigateTab?.call(2), // Incidents tab
+                ),
+                StatKpiCard(
+                  icon: LucideIcons.flame,
+                  label: 'Thermal Hotspots',
+                  value: '${anomalyProvider.anomalies.length}',
+                  subtext: 'From /api/anomalies/live',
+                  tone: KpiTone.info,
+                  onTap: () => widget.onNavigateTab?.call(1), // Map tab
+                ),
+                StatKpiCard(
+                  icon: LucideIcons.tent,
+                  label: 'Shelter Capacity',
+                  value: '${shelterProvider.totalAvailable}',
+                  subtext: 'Beds available across ${shelterProvider.shelters.length} camps',
+                  tone: KpiTone.safe,
+                  onTap: () => widget.onNavigateTab?.call(4), // Shelters tab
+                ),
+                StatKpiCard(
+                  icon: LucideIcons.truck,
+                  label: 'Rescue Fleet',
+                  value: '${rescueProvider.totalVehicles}',
+                  subtext: '${rescueProvider.totalPersonnel} Personnel ready',
+                  tone: KpiTone.warning,
+                  onTap: () => widget.onNavigateTab?.call(3), // Rescue Centers tab
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 20),
+
+            // Live Alert Marquee
+            if (alertProvider.alerts.isNotEmpty) ...[
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'CRITICAL EMERGENCY BULLETINS',
+                    style: AppTheme.mono.copyWith(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1,
+                      color: isDark ? AppColors.textMuted : AppColors.textSubtle,
+                    ),
+                  ),
+                  StatusChip(
+                    label: '${alertProvider.alerts.length} ALERTS',
+                    color: AppColors.emergencyRed,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+
+              ...alertProvider.alerts.take(2).map((a) {
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: isDark ? AppColors.darkCharcoal : AppColors.lightCard,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: (a.severity == 'CRITICAL' ? AppColors.emergencyRed : AppColors.warningOrange).withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Icon(
+                          LucideIcons.radio,
+                          size: 16,
+                          color: a.severity == 'CRITICAL' ? AppColors.emergencyRed : AppColors.warningOrange,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    a.title,
+                                    style: AppTheme.mono.copyWith(fontSize: 11, fontWeight: FontWeight.w700),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                StatusChip(label: a.severity),
+                              ],
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              a.message,
+                              style: AppTheme.sans.copyWith(
+                                fontSize: 11,
+                                color: isDark ? AppColors.textLight : AppColors.textDark,
+                                height: 1.3,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+              const SizedBox(height: 14),
+            ],
+
+            // Recent Incident Activity
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'RECENT INCIDENT ACTIVITY',
+                  style: AppTheme.mono.copyWith(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1,
+                    color: isDark ? AppColors.textMuted : AppColors.textSubtle,
+                  ),
+                ),
+                TextButton(
+                  onPressed: () => widget.onNavigateTab?.call(2),
+                  child: Text('VIEW ALL', style: AppTheme.mono.copyWith(fontSize: 10, color: AppColors.infoCyan)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+
+            ...incidentProvider.incidents.take(4).map((inc) {
+              return Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                child: InkWell(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => IncidentDetailScreen(incident: inc)),
+                    );
+                  },
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: isDark ? AppColors.darkCharcoal : AppColors.lightCard,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: inc.severity == 'CRITICAL'
+                                ? AppColors.emergencyRed.withOpacity(0.12)
+                                : AppColors.warningOrange.withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Icon(
+                            inc.type.contains('Fire') ? LucideIcons.flame : LucideIcons.alertTriangle,
+                            size: 18,
+                            color: inc.severity == 'CRITICAL' ? AppColors.emergencyRed : AppColors.warningOrange,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Flexible(
+                                    child: Text(
+                                      inc.title,
+                                      style: AppTheme.sans.copyWith(fontSize: 13, fontWeight: FontWeight.w700),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  StatusChip(label: inc.status),
+                                ],
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                inc.locationName,
+                                style: AppTheme.sans.copyWith(fontSize: 11, color: AppColors.textMuted),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 3),
+                              Row(
+                                children: [
+                                  StatusChip(label: inc.source, outlined: true),
+                                  if (inc.frp != null) ...[
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      'FRP ${inc.frp} MW',
+                                      style: AppTheme.mono.copyWith(fontSize: 9, color: AppColors.emergencyRed),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }),
+
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
