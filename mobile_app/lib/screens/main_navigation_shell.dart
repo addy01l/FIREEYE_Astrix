@@ -13,6 +13,7 @@ import 'incidents/incidents_screen.dart';
 import 'map/live_map_screen.dart';
 import 'notifications/notifications_screen.dart';
 import 'profile/profile_screen.dart';
+import 'mesh/mesh_status_screen.dart';
 import 'rescue_centers/rescue_centers_screen.dart';
 import 'shelters/shelters_screen.dart';
 import 'victims/victims_screen.dart';
@@ -247,6 +248,15 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
               },
             ),
             ListTile(
+              leading: const Icon(LucideIcons.radio, size: 20, color: AppColors.infoCyan),
+              title: Text('Bluetooth Mesh Relay', style: AppTheme.mono.copyWith(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.infoCyan)),
+              subtitle: Text('Offline Multi-Hop SOS Forwarding', style: AppTheme.sans.copyWith(fontSize: 11, color: AppColors.textMuted)),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const MeshStatusScreen()));
+              },
+            ),
+            ListTile(
               leading: Badge(
                 isLabelVisible: alertProvider.unreadCount > 0,
                 label: Text('${alertProvider.unreadCount}'),
@@ -300,7 +310,7 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
               child: Text(
-                'FIRE-EYE ASTRIX TACTICAL v1.0.0\nNASA FIRMS & PostGIS Integration',
+                'FIRE-EYE ASTRIX TACTICAL v1.0.0\nBLE Offline Mesh & PostGIS Integration',
                 style: AppTheme.mono.copyWith(fontSize: 9, color: AppColors.textSubtle, height: 1.4),
               ),
             ),
@@ -344,4 +354,3 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
     );
   }
 }
-

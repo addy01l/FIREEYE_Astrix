@@ -5,6 +5,7 @@ import 'providers/alert_provider.dart';
 import 'providers/anomaly_provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/incident_provider.dart';
+import 'providers/mesh_provider.dart';
 import 'providers/rescue_center_provider.dart';
 import 'providers/shelter_provider.dart';
 import 'providers/victim_provider.dart';
@@ -24,6 +25,7 @@ class FireEyeApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => RescueCenterProvider()),
         ChangeNotifierProvider(create: (_) => VictimProvider()),
         ChangeNotifierProvider(create: (_) => AlertProvider()),
+        ChangeNotifierProvider(create: (_) => MeshProvider()),
       ],
       child: MaterialApp(
         title: 'FIRE-EYE',
@@ -36,4 +38,3 @@ class FireEyeApp extends StatelessWidget {
     );
   }
 }
-

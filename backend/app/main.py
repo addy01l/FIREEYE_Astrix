@@ -94,12 +94,19 @@ CITIZEN_HTML = """<!DOCTYPE html>
 <body class="min-h-screen flex flex-col justify-between">
   <!-- Top Bar -->
   <header class="border-b border-[#1e222d] px-6 py-4 flex items-center justify-between">
-    <div class="flex items-center space-x-3">
+    <div class="flex items-center space-x-6">
       <span class="text-2xl font-bold tracking-tight text-white">Fire-Eye</span>
+      <nav class="hidden sm:flex items-center space-x-2">
+        <a href="/citizen" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#1e222d] text-white border border-[#2e3444]">Citizen SOS</a>
+        <a href="/commander" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-gray-400 hover:text-white hover:bg-[#13151b] transition">Commander Dispatch</a>
+      </nav>
     </div>
-    <div class="flex items-center space-x-2 bg-[#102a18] border border-[#1b4d2b] px-3 py-1.5 rounded-full text-xs font-semibold text-[#22c55e]">
-      <span class="w-2 h-2 rounded-full bg-[#22c55e]"></span>
-      <span>System Connected</span>
+    <div class="flex items-center space-x-3">
+      <a href="/commander" class="sm:hidden text-xs text-gray-400 hover:text-white underline">Dispatch View</a>
+      <div class="flex items-center space-x-2 bg-[#102a18] border border-[#1b4d2b] px-3 py-1.5 rounded-full text-xs font-semibold text-[#22c55e]">
+        <span class="w-2 h-2 rounded-full bg-[#22c55e]"></span>
+        <span>System Connected</span>
+      </div>
     </div>
   </header>
 
@@ -308,11 +315,230 @@ CITIZEN_HTML = """<!DOCTYPE html>
 </html>
 """
 
+COMMANDER_HTML = """<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fire-Eye | Commander Triage Dispatch</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background-color: #0b0d11; color: #f8fafc; font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    .card { background-color: #13151b; border: 1px solid #232733; border-radius: 1rem; }
+    .inner-box { background-color: #0b0d11; border: 1px solid #1e222d; border-radius: 0.625rem; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between">
+  <!-- Top Bar -->
+  <header class="border-b border-[#1e222d] px-6 py-4 flex items-center justify-between">
+    <div class="flex items-center space-x-6">
+      <span class="text-2xl font-bold tracking-tight text-white">Fire-Eye</span>
+      <nav class="hidden sm:flex items-center space-x-2">
+        <a href="/citizen" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-gray-400 hover:text-white hover:bg-[#13151b] transition">Citizen SOS</a>
+        <a href="/commander" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#1e222d] text-white border border-[#2e3444]">Commander Dispatch</a>
+      </nav>
+    </div>
+    <div class="flex items-center space-x-3">
+      <div id="syncIndicator" class="flex items-center space-x-2 bg-[#102a18] border border-[#1b4d2b] px-3 py-1.5 rounded-full text-xs font-semibold text-[#22c55e]">
+        <span class="w-2 h-2 rounded-full bg-[#22c55e] animate-ping"></span>
+        <span id="syncText">Live Sync (3s)</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="max-w-7xl mx-auto px-4 py-8 flex-1 w-full space-y-6">
+    <!-- Operational KPI Row -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div class="card p-4">
+        <span class="text-xs text-gray-400 block mb-1 font-mono">ACTIVE EMERGENCIES</span>
+        <span id="statActive" class="text-2xl font-black text-red-500">0</span>
+      </div>
+      <div class="card p-4">
+        <span class="text-xs text-gray-400 block mb-1 font-mono">CRITICAL PRIORITY (&ge;80)</span>
+        <span id="statCritical" class="text-2xl font-black text-amber-500">0</span>
+      </div>
+      <div class="card p-4">
+        <span class="text-xs text-gray-400 block mb-1 font-mono">RESCUE UNITS DEPLOYED</span>
+        <span id="statDeployed" class="text-2xl font-black text-cyan-400">4 / 6</span>
+      </div>
+      <div class="card p-4">
+        <span class="text-xs text-gray-400 block mb-1 font-mono">POSTGIS SAFE SHELTERS</span>
+        <span id="statShelters" class="text-2xl font-black text-emerald-400">3 Verified</span>
+      </div>
+    </div>
+
+    <!-- Triage Table Card -->
+    <div class="card p-6">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-[#232733] gap-3">
+        <div>
+          <h2 class="text-xl font-bold text-white flex items-center gap-2">
+            <span>🚨</span> Authoritative Multi-Factor SOS Triage Queue
+          </h2>
+          <p class="text-xs text-gray-400 mt-1">
+            Authoritative algorithmic ranking: Severity (40%) + Vulnerability (30%) + Risk (20%) + Isolation (10%).
+          </p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="triggerSimulatedBeacon()" class="px-3 py-1.5 bg-red-950/60 hover:bg-red-900 border border-red-700/60 rounded-lg text-xs font-semibold text-red-300 transition">
+            + Ingest Mesh Beacon
+          </button>
+          <button onclick="fetchQueue()" class="px-3 py-1.5 bg-[#1e222d] hover:bg-gray-800 border border-[#2e3444] rounded-lg text-xs font-semibold text-gray-200 transition">
+            ↻ Refresh
+          </button>
+        </div>
+      </div>
+
+      <!-- Table -->
+      <div class="overflow-x-auto mt-4">
+        <table class="w-full text-left text-xs text-gray-300">
+          <thead class="text-gray-400 uppercase font-mono bg-[#0b0d11]/70 border-b border-[#232733]">
+            <tr>
+              <th class="py-3 px-3">Priority Score</th>
+              <th class="py-3 px-3">Beacon ID</th>
+              <th class="py-3 px-3">Emergency & Details</th>
+              <th class="py-3 px-3">Location (GPS)</th>
+              <th class="py-3 px-3">Status</th>
+              <th class="py-3 px-3 text-right">Operational Actions</th>
+            </tr>
+          </thead>
+          <tbody id="queueBody" class="divide-y divide-[#1e222d]">
+            <tr>
+              <td colspan="6" class="text-center py-8 text-gray-500">Connecting to FIRE-EYE Central Dispatch Queue...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <footer class="text-center py-4 text-xs text-gray-500 border-t border-[#1e222d]">
+    FIRE-EYE National Rescue Command Center • Authoritative Dispatch & Multi-Hop BLE Ingestion
+  </footer>
+
+  <script>
+    async function fetchQueue() {
+      try {
+        const res = await fetch('/api/v1/sos/active');
+        const items = await res.json();
+        renderQueue(items);
+      } catch (err) {
+        console.error("Queue fetch error:", err);
+      }
+    }
+
+    function renderQueue(items) {
+      const tbody = document.getElementById('queueBody');
+      const statActive = document.getElementById('statActive');
+      const statCritical = document.getElementById('statCritical');
+
+      if (!items || items.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-gray-500">No unresolved emergency beacons in queue. All clear.</td></tr>';
+        statActive.innerText = '0';
+        statCritical.innerText = '0';
+        return;
+      }
+
+      statActive.innerText = items.length;
+      const critCount = items.filter(i => (i.priority_score || 0) >= 80).length;
+      statCritical.innerText = critCount;
+
+      tbody.innerHTML = items.map(item => {
+        const score = item.priority_score || 50;
+        let scoreBadge = '';
+        if (score >= 80) {
+          scoreBadge = `<span class="px-2.5 py-1 rounded bg-red-950/80 border border-red-500 text-red-400 font-mono font-bold">${score} • CRITICAL</span>`;
+        } else if (score >= 60) {
+          scoreBadge = `<span class="px-2.5 py-1 rounded bg-amber-950/80 border border-amber-500 text-amber-400 font-mono font-bold">${score} • HIGH</span>`;
+        } else {
+          scoreBadge = `<span class="px-2.5 py-1 rounded bg-blue-950/80 border border-blue-500 text-blue-400 font-mono font-bold">${score} • MEDIUM</span>`;
+        }
+
+        let statusBadge = '';
+        if (item.status === 'PENDING') {
+          statusBadge = '<span class="px-2 py-0.5 rounded bg-yellow-950/60 border border-yellow-600/50 text-yellow-300 font-mono text-[10px]">PENDING</span>';
+        } else if (item.status === 'DISPATCHED' || item.status === 'ASSIGNED') {
+          statusBadge = '<span class="px-2 py-0.5 rounded bg-cyan-950/60 border border-cyan-600/50 text-cyan-300 font-mono text-[10px]">EN ROUTE</span>';
+        } else {
+          statusBadge = `<span class="px-2 py-0.5 rounded bg-green-950/60 border border-green-600/50 text-green-300 font-mono text-[10px]">${item.status}</span>`;
+        }
+
+        return `
+          <tr class="hover:bg-[#161922] transition">
+            <td class="py-3 px-3 font-semibold">${scoreBadge}</td>
+            <td class="py-3 px-3 font-mono font-bold text-white">${item.sos_code || ('SOS-' + item.id)}</td>
+            <td class="py-3 px-3">
+              <div class="font-bold text-gray-200">${item.emergency_type || 'General Distress'}</div>
+              <div class="text-[11px] text-gray-400 max-w-sm truncate">${item.notes || 'No extra notes'}</div>
+            </td>
+            <td class="py-3 px-3 font-mono text-[11px] text-gray-400">
+              ${(item.latitude || 0).toFixed(4)}, ${(item.longitude || 0).toFixed(4)}
+            </td>
+            <td class="py-3 px-3">${statusBadge}</td>
+            <td class="py-3 px-3 text-right space-x-2">
+              ${item.status === 'PENDING' ? `
+                <button onclick="updateStatus('${item.id}', 'DISPATCHED')" class="px-2.5 py-1 bg-cyan-900/40 hover:bg-cyan-800/60 border border-cyan-500/50 text-cyan-300 rounded font-semibold text-[11px] transition">
+                  Dispatch Team
+                </button>
+              ` : ''}
+              <button onclick="updateStatus('${item.id}', 'RESCUED')" class="px-2.5 py-1 bg-emerald-900/40 hover:bg-emerald-800/60 border border-emerald-500/50 text-emerald-300 rounded font-semibold text-[11px] transition">
+                Mark Rescued
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    async function updateStatus(sosId, newStatus) {
+      try {
+        await fetch(`/api/v1/sos/${sosId}/status`, {
+          method: 'PATCH',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ status: newStatus, notes: `Commander updated to ${newStatus}` })
+        });
+        fetchQueue();
+      } catch (err) {
+        console.error('Update status error:', err);
+      }
+    }
+
+    async function triggerSimulatedBeacon() {
+      const types = ['Trapped / Structural Collapse', 'Flash Flood / Rising Water', 'Active Fire / Wildfire'];
+      const chosenType = types[Math.floor(Math.random() * types.length)];
+      const payload = {
+        latitude: 30.3165 + (Math.random() - 0.5) * 0.05,
+        longitude: 78.0322 + (Math.random() - 0.5) * 0.05,
+        emergency_type: chosenType,
+        severity: 'CRITICAL',
+        notes: `Simulated BLE Mesh Beacon. Stranded: ${Math.floor(2 + Math.random() * 4)}. Vulnerabilities: Infants, Elderly`
+      };
+      await fetch('/api/v1/sos/', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
+      });
+      fetchQueue();
+    }
+
+    fetchQueue();
+    setInterval(fetchQueue, 3000);
+  </script>
+</body>
+</html>
+"""
+
 
 @app.get("/", response_class=HTMLResponse)
 @app.get("/citizen", response_class=HTMLResponse)
 def get_citizen_portal():
     return CITIZEN_HTML
+
+
+@app.get("/commander", response_class=HTMLResponse)
+@app.get("/rescuer", response_class=HTMLResponse)
+def get_commander_portal():
+    return COMMANDER_HTML
 
 
 if __name__ == "__main__":

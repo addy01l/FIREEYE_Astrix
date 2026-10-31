@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../core/config/api_config.dart';
 import '../core/network/api_client.dart';
+import 'mesh/mesh_manager.dart';
 
 class SosService {
   final ApiClient _client = ApiClient.instance;
@@ -36,8 +37,19 @@ class SosService {
       }
       throw StateError('Backend returned an invalid SOS response');
     } catch (e) {
-      // Offline fallback: save to persistent offline queue
+      // Offline fallback: save to persistent offline queue AND broadcast over BLE multi-hop mesh
       await _queueOfflineSos(payload);
+
+      try {
+        await MeshManager.instance.broadcastLocalSos(
+          latitude: latitude,
+          longitude: longitude,
+          emergencyType: emergencyType,
+          notes: notes,
+          severity: severity,
+        );
+      } catch (_) {}
+
       return {
         'sos_code': idempotencyKey ?? 'SOS-OFFLINE',
         'status': 'QUEUED_OFFLINE',

@@ -12,6 +12,8 @@ import '../../providers/alert_provider.dart';
 import '../../providers/incident_provider.dart';
 import '../../providers/shelter_provider.dart';
 import '../../services/sos_service.dart';
+import '../../services/mesh/mesh_manager.dart';
+import '../mesh/mesh_status_screen.dart';
 import '../../widgets/status_chip.dart';
 
 class EmergencyHelpScreen extends StatefulWidget {
@@ -179,6 +181,18 @@ class _EmergencyHelpScreenState extends State<EmergencyHelpScreen> with SingleTi
     ).catchError((_) {
       return <String, dynamic>{};
     });
+
+    // Broadcast through BLE store-and-forward mesh network
+    try {
+      MeshManager.instance.broadcastLocalSos(
+        latitude: _latitude,
+        longitude: _longitude,
+        emergencyType: _selectedEmergency,
+        notes: details.toString(),
+        peopleCount: _victimCount,
+        vulnerabilities: _vulnerabilities.toList(),
+      );
+    } catch (_) {}
 
     // Update in-memory Incident and Alert providers
     if (!mounted) return;
@@ -908,6 +922,7 @@ class _EmergencyHelpScreenState extends State<EmergencyHelpScreen> with SingleTi
                 const Divider(color: Color(0xFF232733), height: 16),
                 _buildDispatchRow(LucideIcons.checkCircle2, 'Distress Signal Logged in Central Emergency Registry', true),
                 _buildDispatchRow(LucideIcons.radio, 'Dispatched to Commander & Rescuer Queue', true),
+                _buildDispatchRow(LucideIcons.bluetooth, 'BLE Mesh Relay: Advertising Store-and-Forward Beacon', true),
                 _buildDispatchRow(LucideIcons.crosshair, 'GPS Locked (${_latitude.toStringAsFixed(4)}° N, ${_longitude.toStringAsFixed(4)}° E)', true),
               ],
             ),
@@ -929,6 +944,15 @@ class _EmergencyHelpScreenState extends State<EmergencyHelpScreen> with SingleTi
               style: AppTheme.mono.copyWith(fontWeight: FontWeight.w800, letterSpacing: 0.8),
             ),
             onPressed: _cancelSos,
+          ),
+
+          const SizedBox(height: 12),
+          TextButton.icon(
+            icon: const Icon(LucideIcons.radio, size: 14, color: AppColors.infoCyan),
+            label: Text('View Bluetooth Mesh Relay Network', style: AppTheme.mono.copyWith(fontSize: 11, color: AppColors.infoCyan)),
+            onPressed: () {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const MeshStatusScreen()));
+            },
           ),
         ],
       ),

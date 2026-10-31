@@ -15,6 +15,7 @@ import '../../widgets/status_chip.dart';
 import '../auth/login_screen.dart';
 import '../incidents/incident_detail_screen.dart';
 import '../victims/victims_screen.dart';
+import '../mesh/mesh_status_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   final Function(int)? onNavigateTab;
@@ -172,6 +173,47 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ),
                       ],
                     ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 12),
+
+            // BLE Offline Mesh Relay Operational Bar
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: const Color(0xFF13151B),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFF232733)),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(LucideIcons.radio, size: 16, color: AppColors.infoCyan),
+                      const SizedBox(width: 8),
+                      Text(
+                        'BLE OFFLINE MESH RELAY',
+                        style: AppTheme.mono.copyWith(fontSize: 11, fontWeight: FontWeight.w800, color: AppColors.textLight),
+                      ),
+                    ],
+                  ),
+                  TextButton.icon(
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                    icon: const Icon(LucideIcons.arrowUpRight, size: 12, color: AppColors.infoCyan),
+                    label: Text(
+                      'MESH STATUS',
+                      style: AppTheme.mono.copyWith(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.infoCyan),
+                    ),
+                    onPressed: () {
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => const MeshStatusScreen()));
+                    },
                   ),
                 ],
               ),
