@@ -107,31 +107,39 @@ class ConnectionManager:
         """
         Background task: subscribes to the Redis 'fire_eye_events' channel
         and relays messages to all connected WebSocket clients.
+        Resilient: handles disconnection, reconnections, and degrades gracefully.
         """
-        try:
-            from app.redis_client import redis_client
+        while True:
+            try:
+                from app.redis_client import redis_client
+                if redis_client is None:
+                    await asyncio.sleep(10)
+                    continue
 
-            pubsub = redis_client.pubsub()
-            pubsub.subscribe("fire_eye_events")
-            logger.info("Redis Pub/Sub subscriber started on 'fire_eye_events'.")
+                pubsub = redis_client.pubsub()
+                await asyncio.to_thread(pubsub.subscribe, "fire_eye_events")
+                logger.info("Redis Pub/Sub subscriber connected on 'fire_eye_events'.")
 
-            while True:
-                message = pubsub.get_message(
-                    ignore_subscribe_messages=True, timeout=1.0
+                while True:
+                    message = await asyncio.to_thread(
+                        pubsub.get_message, ignore_subscribe_messages=True, timeout=1.0
+                    )
+                    if message and message.get("type") == "message":
+                        try:
+                            data = json.loads(message["data"])
+                            event_type = data.get("event", "UNKNOWN")
+                            payload = data.get("data", {})
+                            await self.broadcast(event_type, payload)
+                        except json.JSONDecodeError:
+                            logger.warning("Malformed Redis Pub/Sub message.")
+                    await asyncio.sleep(0.05)
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logger.warning(
+                    f"Redis Pub/Sub connection issue: {e}. Retrying in 10s (Direct WebSocket broadcast active)."
                 )
-                if message and message.get("type") == "message":
-                    try:
-                        data = json.loads(message["data"])
-                        event_type = data.get("event", "UNKNOWN")
-                        payload = data.get("data", {})
-                        await self.broadcast(event_type, payload)
-                    except json.JSONDecodeError:
-                        logger.warning("Malformed Redis Pub/Sub message.")
-                await asyncio.sleep(0.1)
-        except Exception as e:
-            logger.warning(
-                f"Redis Pub/Sub not available: {e}. WS direct-broadcast only."
-            )
+                await asyncio.sleep(10)
 
     @property
     def client_count(self) -> int:
@@ -147,17 +155,19 @@ def publish_event(event_type: str, payload: dict):
     """
     try:
         from app.redis_client import redis_client
-
-        redis_client.publish(
-            "fire_eye_events", json.dumps({"event": event_type, "data": payload})
-        )
+        if redis_client is not None:
+            redis_client.publish(
+                "fire_eye_events", json.dumps({"event": event_type, "data": payload})
+            )
     except Exception as e:
+        logger.debug(f"Redis publish omitted: {e}")
+
+    try:
         import asyncio
-        try:
-            loop = asyncio.get_running_loop()
-            loop.create_task(ws_manager.broadcast(event_type, payload))
-        except RuntimeError:
-            pass
+        loop = asyncio.get_running_loop()
+        loop.create_task(ws_manager.broadcast(event_type, payload))
+    except RuntimeError:
+        pass
 
 
 # ── Singleton ────────────────────────────────────────────────────────────────

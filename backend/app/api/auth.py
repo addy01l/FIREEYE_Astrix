@@ -77,36 +77,12 @@ def register(user_in: UserRegister, db: Session = Depends(get_db)):
 def login(credentials: UserLogin, db: Session = Depends(get_db)):
     """Authenticate with username and password, returning JWT access and refresh tokens."""
     user = db.query(User).filter(User.username == credentials.username).first()
-
-    # Automatic test/seed provisioner for hackathon testing if user doesn't exist
-    if not user:
-        default_role = (
-            "RESCUE"
-            if "commander" in credentials.username.lower() or "rescue" in credentials.username.lower()
-            else ("ADMIN" if "admin" in credentials.username.lower() else "CITIZEN")
+    if not user or not verify_password(credentials.password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid username or password",
+            headers={"WWW-Authenticate": "Bearer"},
         )
-        user = User(
-            username=credentials.username,
-            hashed_password=get_password_hash(credentials.password),
-            role=default_role,
-            is_active=True,
-        )
-        db.add(user)
-        db.commit()
-        db.refresh(user)
-    else:
-        # Verify password if user exists
-        if not verify_password(credentials.password, user.hashed_password):
-            # Fallback check for legacy dummy hash accounts during migration
-            if user.hashed_password == "dummy_hash":
-                user.hashed_password = get_password_hash(credentials.password)
-                db.commit()
-            else:
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Invalid username or password",
-                    headers={"WWW-Authenticate": "Bearer"},
-                )
 
     if not user.is_active:
         raise HTTPException(

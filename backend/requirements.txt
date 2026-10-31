@@ -5,6 +5,7 @@ pydantic-settings>=2.2.0
 sqlalchemy>=2.0.25
 python-dotenv>=1.0.1
 pyjwt>=2.8.0
+bcrypt>=4.1.0
 passlib[bcrypt]>=1.7.4
 python-multipart>=0.0.9
 scikit-learn>=1.4.0
@@ -21,4 +22,4 @@ alembic>=1.13.1
 redis>=5.0.1
 gunicorn>=21.2.0
 polyline>=2.0.0
-requests
+requests>=2.31.0

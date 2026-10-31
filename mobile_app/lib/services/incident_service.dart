@@ -86,9 +86,9 @@ class IncidentService {
         }).toList();
       }
     } catch (_) {
-      rethrow;
+      return _localIncidents;
     }
-    return [];
+    return _localIncidents;
   }
 
   Future<bool> createIncident(IncidentModel incident) async {

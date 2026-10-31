@@ -1,8 +1,12 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mobile_app/models/alert_model.dart';
 import 'package:mobile_app/models/anomaly_model.dart';
 import 'package:mobile_app/models/incident_model.dart';
+import 'package:mobile_app/models/shelter_model.dart';
 import 'package:mobile_app/models/user_model.dart';
+import 'package:mobile_app/models/victim_model.dart';
+import 'package:mobile_app/services/sos_service.dart';
 
 void main() {
   group('FIRE-EYE Data Models & Parsers', () {
@@ -68,6 +72,47 @@ void main() {
       expect(incident.latitude, closeTo(30.3842, 0.0001));
     });
 
+    test('ShelterModel parses shelter schema correctly', () {
+      final json = {
+        'id': 'SHL-01',
+        'name': 'Doon Relief Camp',
+        'address': 'Rajpur Road',
+        'capacity': 500,
+        'occupancy': 200,
+        'latitude': 30.3340,
+        'longitude': 78.0550,
+        'contact_phone': '+91 94101 22334',
+        'has_medical': true,
+        'has_generator': true,
+        'status': 'OPERATIONAL',
+      };
+
+      final shelter = ShelterModel.fromJson(json);
+      expect(shelter.id, equals('SHL-01'));
+      expect(shelter.name, equals('Doon Relief Camp'));
+      expect(shelter.availableBeds, equals(300));
+      expect(shelter.occupancyRate, closeTo(0.4, 0.01));
+    });
+
+    test('VictimModel parses triage queue correctly', () {
+      final json = {
+        'id': 'VIC-901',
+        'full_name': 'Ramesh C.',
+        'incident_id': 'INC-9481',
+        'location': 'Selaqui Sector 2',
+        'status': 'TRAPPED',
+        'priority_score': 92,
+        'has_elderly': true,
+        'medical_condition': 'Vapor inhalation',
+        'reported_at': '2026-10-31T09:00:00Z',
+      };
+
+      final victim = VictimModel.fromJson(json);
+      expect(victim.id, equals('VIC-901'));
+      expect(victim.priorityScore, equals(92));
+      expect(victim.hasElderly, isTrue);
+    });
+
     test('UserRole parser maps strings to correct enum', () {
       expect(UserRole.fromString('commander'), equals(UserRole.commander));
       expect(UserRole.fromString('admin'), equals(UserRole.commander));
@@ -76,6 +121,26 @@ void main() {
       expect(UserRole.fromString('unknown'), equals(UserRole.citizen));
       expect(UserRole.fromString(null), equals(UserRole.citizen));
     });
+
+    test('SosService queues offline SOS when network is unreachable', () async {
+      SharedPreferences.setMockInitialValues({});
+      final service = SosService();
+
+      final res = await service.createSos(
+        latitude: 30.3165,
+        longitude: 78.0322,
+        emergencyType: 'Flash Flood',
+        notes: 'Water rising rapidly',
+        idempotencyKey: 'SOS-TEST-OFFLINE',
+      );
+
+      expect(res['status'], equals('QUEUED_OFFLINE'));
+      expect(res['is_offline'], isTrue);
+
+      final queue = await service.getOfflineQueue();
+      expect(queue.length, equals(1));
+      expect(queue.first['emergency_type'], equals('Flash Flood'));
+      expect(queue.first['idempotency_key'], equals('SOS-TEST-OFFLINE'));
+    });
   });
 }
-

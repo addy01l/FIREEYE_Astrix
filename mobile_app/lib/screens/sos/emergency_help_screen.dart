@@ -139,24 +139,6 @@ class _EmergencyHelpScreenState extends State<EmergencyHelpScreen> with SingleTi
       details.write('Reporter Name: ${_nameController.text.trim()}.\n');
     }
 
-    try {
-      await SosService().createSos(
-        latitude: _latitude,
-        longitude: _longitude,
-        emergencyType: _selectedEmergency,
-        notes: details.toString(),
-        idempotencyKey: beaconId,
-      );
-    } catch (error) {
-      if (mounted) {
-        setState(() => _submitting = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('SOS transmission failed: $error')),
-        );
-      }
-      return;
-    }
-
     final incident = IncidentModel(
       id: beaconId,
       title: '🚨 CIVILIAN SOS: $_selectedEmergency',
@@ -184,6 +166,17 @@ class _EmergencyHelpScreenState extends State<EmergencyHelpScreen> with SingleTi
       _isSosActive = true;
       _activeBeaconId = beaconId;
       _beaconTime = timestamp;
+    });
+
+    // Dispatch SOS packet to backend asynchronously
+    SosService().createSos(
+      latitude: _latitude,
+      longitude: _longitude,
+      emergencyType: _selectedEmergency,
+      notes: details.toString(),
+      idempotencyKey: beaconId,
+    ).catchError((_) {
+      return <String, dynamic>{};
     });
 
     // Broadcast to Central Incident Provider and Alert Provider asynchronously

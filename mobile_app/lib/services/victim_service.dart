@@ -83,9 +83,9 @@ class VictimService {
         }
       }
     } catch (_) {
-      rethrow;
+      return _fallbackVictims;
     }
-    return [];
+    return _fallbackVictims;
   }
 
   Future<bool> updateVictimStatus(String id, String newStatus, {String? notes}) async {

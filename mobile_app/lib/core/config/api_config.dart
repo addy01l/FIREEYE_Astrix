@@ -3,11 +3,15 @@ import 'package:flutter/foundation.dart';
 
 class ApiConfig {
   /// Base host configuration
-  /// Emulator: http://10.0.2.2:8000
-  /// Windows desktop: http://127.0.0.1:8000
-  /// Web: http://localhost:8000
-  /// Physical device: user-configurable LAN IP
+  /// Priority:
+  /// 1. Compile-time --dart-define=BACKEND_BASE_URL=https://your-service.onrender.com
+  /// 2. Android emulator: http://10.0.2.2:8000
+  /// 3. Windows desktop: http://127.0.0.1:8000
+  /// 4. Web: http://localhost:8000
+  /// 5. Physical device: user-configurable in Profile & Settings screen
   static String get defaultBaseUrl {
+    const envUrl = String.fromEnvironment('BACKEND_BASE_URL');
+    if (envUrl.isNotEmpty) return envUrl.replaceAll(RegExp(r'/$'), '');
     if (kIsWeb) return 'http://localhost:8000';
     try {
       if (Platform.isAndroid) return 'http://10.0.2.2:8000';
@@ -19,7 +23,7 @@ class ApiConfig {
   static String baseUrl = defaultBaseUrl;
 
   static void setBaseUrl(String url) {
-    baseUrl = url;
+    baseUrl = url.replaceAll(RegExp(r'/$'), '');
   }
 
   static String get healthEndpoint => '$baseUrl/health';
