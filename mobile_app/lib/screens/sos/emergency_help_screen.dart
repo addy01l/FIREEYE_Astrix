@@ -897,6 +897,19 @@ class _EmergencyHelpScreenState extends State<EmergencyHelpScreen> with SingleTi
             ),
             onPressed: _showPreFedQuestionsModal,
           ),
+          const SizedBox(height: 4),
+
+          // Offline BLE Mesh Relay Status Link
+          TextButton.icon(
+            icon: const Icon(LucideIcons.radio, size: 13, color: AppColors.safeGreen),
+            label: Text(
+              'Bluetooth Offline Mesh Network Status',
+              style: AppTheme.sans.copyWith(fontSize: 11, color: AppColors.safeGreen),
+            ),
+            onPressed: () {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const MeshStatusScreen()));
+            },
+          ),
         ],
       ),
     );

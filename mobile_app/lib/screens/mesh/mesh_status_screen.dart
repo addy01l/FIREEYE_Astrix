@@ -60,6 +60,28 @@ class _MeshStatusScreenState extends State<MeshStatusScreen> {
     );
   }
 
+  Future<void> _handleToggle(BuildContext context) async {
+    final meshProvider = context.read<MeshProvider>();
+    final isRunning = meshProvider.isMeshRunning;
+    if (isRunning) {
+      await meshProvider.toggleMesh();
+    } else {
+      final success = await meshProvider.toggleMesh();
+      if (!success && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            backgroundColor: Color(0xFF1E222D),
+            content: Text(
+              '⚠️ Unable to start BLE Mesh Radio. Ensure Bluetooth is enabled on device and Nearby Devices permission is granted.',
+              style: TextStyle(color: Colors.white, fontSize: 12),
+            ),
+            duration: Duration(seconds: 4),
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final meshProvider = context.watch<MeshProvider>();
@@ -147,7 +169,7 @@ class _MeshStatusScreenState extends State<MeshStatusScreen> {
                       Switch(
                         value: meshProvider.isMeshRunning,
                         activeColor: AppColors.safeGreen,
-                        onChanged: (_) => meshProvider.toggleMesh(),
+                        onChanged: (_) => _handleToggle(context),
                       ),
                     ],
                   ),

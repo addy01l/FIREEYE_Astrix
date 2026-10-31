@@ -69,6 +69,16 @@ class MeshManager {
   /// Start BLE Mesh (Advertising + Scanning + GATT Server)
   Future<bool> startMesh() async {
     await init();
+    if (_adapter.isAndroid) {
+      try {
+        final hasPerm = await _adapter.hasPermissions();
+        if (!hasPerm) {
+          await _adapter.requestPermissions();
+        }
+      } catch (e) {
+        debugPrint('[BLE MESH] Permission check error: $e');
+      }
+    }
     final ok = await _adapter.startMesh(deviceId: _deviceId);
     if (ok) {
       _isMeshRunning = true;
