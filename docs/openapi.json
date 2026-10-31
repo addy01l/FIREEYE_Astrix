@@ -1,0 +1,2814 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "FIRE-EYE Disaster Response Engine",
+    "description": "FIRE-EYE Inclusive & Fault-Tolerant Disaster Response System API",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/v1/auth/register": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Register",
+        "description": "Register a new user (Citizen, Rescue Responder, Volunteer, or Admin).",
+        "operationId": "register_api_v1_auth_register_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserRegister"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Login",
+        "description": "Authenticate with username and password, returning JWT access and refresh tokens.",
+        "operationId": "login_api_v1_auth_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserLogin"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/refresh": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Refresh Token",
+        "description": "Issue a new access token using a valid refresh token.",
+        "operationId": "refresh_token_api_v1_auth_refresh_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TokenRefreshRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/me": {
+      "get": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Get Current User Profile",
+        "description": "Retrieve authenticated user's profile and assigned role.",
+        "operationId": "get_current_user_profile_api_v1_auth_me_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/disaster/zones": {
+      "get": {
+        "tags": [
+          "Disaster Risk & Prediction"
+        ],
+        "summary": "Get Risk Zones",
+        "operationId": "get_risk_zones_api_v1_disaster_zones_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/RiskZoneResponse"
+                  },
+                  "type": "array",
+                  "title": "Response Get Risk Zones Api V1 Disaster Zones Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/disaster/predict/landslide": {
+      "post": {
+        "tags": [
+          "Disaster Risk & Prediction"
+        ],
+        "summary": "Predict Landslide",
+        "operationId": "predict_landslide_api_v1_disaster_predict_landslide_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LandslidePredictRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LandslidePredictResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/households/": {
+      "get": {
+        "tags": [
+          "Vulnerable Households"
+        ],
+        "summary": "Get Households",
+        "description": "Retrieve list of registered vulnerable households, with optional zone and vulnerability filters.",
+        "operationId": "get_households_api_v1_households__get",
+        "parameters": [
+          {
+            "name": "zone_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Zone Id"
+            }
+          },
+          {
+            "name": "min_vulnerability",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "default": 0.0,
+              "title": "Min Vulnerability"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/HouseholdResponse"
+                  },
+                  "title": "Response Get Households Api V1 Households  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Vulnerable Households"
+        ],
+        "summary": "Create Household",
+        "description": "Register a new household record with computed vulnerability scoring.",
+        "operationId": "create_household_api_v1_households__post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HouseholdCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HouseholdResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/households/{household_code}": {
+      "get": {
+        "tags": [
+          "Vulnerable Households"
+        ],
+        "summary": "Get Household By Code",
+        "description": "Retrieve details for a single household by its code.",
+        "operationId": "get_household_by_code_api_v1_households__household_code__get",
+        "parameters": [
+          {
+            "name": "household_code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Household Code"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HouseholdResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sos/": {
+      "post": {
+        "tags": [
+          "Emergency SOS"
+        ],
+        "summary": "Create Sos",
+        "description": "Create an Emergency SOS request.\nIdempotent: If an SOS with the same idempotency_key already exists, returns the existing record.",
+        "operationId": "create_sos_api_v1_sos__post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SOSCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SOSResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/sos/active": {
+      "get": {
+        "tags": [
+          "Emergency SOS"
+        ],
+        "summary": "Get Active Sos",
+        "description": "Retrieve all unresolved active SOS requests sorted by priority.",
+        "operationId": "get_active_sos_api_v1_sos_active_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SOSResponse"
+                  },
+                  "type": "array",
+                  "title": "Response Get Active Sos Api V1 Sos Active Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sos/my": {
+      "get": {
+        "tags": [
+          "Emergency SOS"
+        ],
+        "summary": "Get My Sos Requests",
+        "description": "Retrieve all SOS requests initiated by the current authenticated citizen.",
+        "operationId": "get_my_sos_requests_api_v1_sos_my_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SOSResponse"
+                  },
+                  "type": "array",
+                  "title": "Response Get My Sos Requests Api V1 Sos My Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/sos/{sos_id}": {
+      "get": {
+        "tags": [
+          "Emergency SOS"
+        ],
+        "summary": "Get Sos By Id",
+        "description": "Retrieve details for a single SOS request.",
+        "operationId": "get_sos_by_id_api_v1_sos__sos_id__get",
+        "parameters": [
+          {
+            "name": "sos_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Sos Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SOSResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sos/{sos_id}/status": {
+      "patch": {
+        "tags": [
+          "Emergency SOS"
+        ],
+        "summary": "Update Sos Status",
+        "description": "Update the triage or rescue operational status of an SOS request.\nAllowed statuses: PENDING, ASSIGNED, DISPATCHED, RESCUED, CANCELLED.",
+        "operationId": "update_sos_status_api_v1_sos__sos_id__status_patch",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "sos_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Sos Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SOSStatusUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SOSResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sos/{sos_id}/assign": {
+      "post": {
+        "tags": [
+          "Emergency SOS"
+        ],
+        "summary": "Assign Rescue Team",
+        "description": "Assign a rescue team or responder to an active SOS request.",
+        "operationId": "assign_rescue_team_api_v1_sos__sos_id__assign_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "sos_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Sos Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SOSAssignRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RescueAssignmentResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sos/mesh": {
+      "post": {
+        "tags": [
+          "Emergency SOS"
+        ],
+        "summary": "Receive Mesh Packet Sos",
+        "description": "Receive store-and-forward mesh packet representing an offline SOS.",
+        "operationId": "receive_mesh_packet_sos_api_v1_sos_mesh_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MeshPacket"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeshPacketAck"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/priority/queue": {
+      "get": {
+        "tags": [
+          "Rescue Priority Engine"
+        ],
+        "summary": "Get Priority Queue",
+        "operationId": "get_priority_queue_api_v1_priority_queue_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PriorityQueueResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/routing/safe-route": {
+      "post": {
+        "tags": [
+          "Evacuation Routing"
+        ],
+        "summary": "Get Safe Route",
+        "operationId": "get_safe_route_api_v1_routing_safe_route_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RouteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RouteResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/shelters/": {
+      "get": {
+        "tags": [
+          "Shelters & Resources"
+        ],
+        "summary": "Get Shelters",
+        "description": "Retrieve all emergency shelters with live capacity and availability.",
+        "operationId": "get_shelters_api_v1_shelters__get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ShelterResponse"
+                  },
+                  "type": "array",
+                  "title": "Response Get Shelters Api V1 Shelters  Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/shelters/{shelter_code}": {
+      "get": {
+        "tags": [
+          "Shelters & Resources"
+        ],
+        "summary": "Get Shelter",
+        "description": "Retrieve details for a specific shelter.",
+        "operationId": "get_shelter_api_v1_shelters__shelter_code__get",
+        "parameters": [
+          {
+            "name": "shelter_code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Shelter Code"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShelterResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/shelters/{shelter_code}/occupancy": {
+      "patch": {
+        "tags": [
+          "Shelters & Resources"
+        ],
+        "summary": "Update Shelter Occupancy",
+        "description": "Update shelter occupancy, operational status, or safety condition.",
+        "operationId": "update_shelter_occupancy_api_v1_shelters__shelter_code__occupancy_patch",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "shelter_code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Shelter Code"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShelterOccupancyUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShelterResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/mesh/packet": {
+      "post": {
+        "tags": [
+          "Offline Mesh Gateway"
+        ],
+        "summary": "Receive Mesh Packet",
+        "description": "Ingest a store-and-forward mesh packet submitted by a hardware gateway node.\nPerforms deduplication, updates message log, and enqueues SOS when appropriate.",
+        "operationId": "receive_mesh_packet_api_v1_mesh_packet_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MeshPacket"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeshPacketAck"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/mesh/messages": {
+      "get": {
+        "tags": [
+          "Offline Mesh Gateway"
+        ],
+        "summary": "List Mesh Messages",
+        "description": "List recent ingested mesh packets and store-and-forward history.",
+        "operationId": "list_mesh_messages_api_v1_mesh_messages_get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "default": 50,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/audit/events": {
+      "get": {
+        "tags": [
+          "Audit Trail"
+        ],
+        "summary": "Get Audit Events",
+        "description": "Retrieve system audit trail records (Admin / Oversight).",
+        "operationId": "get_audit_events_api_v1_audit_events_get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 500,
+              "default": 100,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "action",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Action"
+            }
+          },
+          {
+            "name": "actor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Actor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AuditEventResponse"
+                  },
+                  "title": "Response Get Audit Events Api V1 Audit Events Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "summary": "Health Check",
+        "operationId": "health_check_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AuditEventResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "actor_username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor Username"
+          },
+          "actor_role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor Role"
+          },
+          "action": {
+            "type": "string",
+            "title": "Action"
+          },
+          "resource_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resource Type"
+          },
+          "resource_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resource Id"
+          },
+          "details": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Details"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Timestamp"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "action",
+          "status",
+          "timestamp"
+        ],
+        "title": "AuditEventResponse"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HouseholdCreate": {
+        "properties": {
+          "household_code": {
+            "type": "string",
+            "title": "Household Code"
+          },
+          "zone_id": {
+            "type": "string",
+            "title": "Zone Id"
+          },
+          "address": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address"
+          },
+          "latitude": {
+            "type": "number",
+            "title": "Latitude"
+          },
+          "longitude": {
+            "type": "number",
+            "title": "Longitude"
+          },
+          "elevation": {
+            "type": "number",
+            "title": "Elevation",
+            "default": 1000.0
+          },
+          "members_count": {
+            "type": "integer",
+            "title": "Members Count",
+            "default": 1
+          },
+          "elderly_count": {
+            "type": "integer",
+            "title": "Elderly Count",
+            "default": 0
+          },
+          "children_count": {
+            "type": "integer",
+            "title": "Children Count",
+            "default": 0
+          },
+          "disabled_count": {
+            "type": "integer",
+            "title": "Disabled Count",
+            "default": 0
+          },
+          "medical_needs": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Medical Needs"
+          }
+        },
+        "type": "object",
+        "required": [
+          "household_code",
+          "zone_id",
+          "latitude",
+          "longitude"
+        ],
+        "title": "HouseholdCreate"
+      },
+      "HouseholdResponse": {
+        "properties": {
+          "household_code": {
+            "type": "string",
+            "title": "Household Code"
+          },
+          "zone_id": {
+            "type": "string",
+            "title": "Zone Id"
+          },
+          "address": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address"
+          },
+          "latitude": {
+            "type": "number",
+            "title": "Latitude"
+          },
+          "longitude": {
+            "type": "number",
+            "title": "Longitude"
+          },
+          "members_count": {
+            "type": "integer",
+            "title": "Members Count",
+            "default": 1
+          },
+          "elderly_count": {
+            "type": "integer",
+            "title": "Elderly Count",
+            "default": 0
+          },
+          "children_count": {
+            "type": "integer",
+            "title": "Children Count",
+            "default": 0
+          },
+          "disabled_count": {
+            "type": "integer",
+            "title": "Disabled Count",
+            "default": 0
+          },
+          "medical_needs": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Medical Needs"
+          },
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "vulnerability_score": {
+            "type": "number",
+            "title": "Vulnerability Score"
+          }
+        },
+        "type": "object",
+        "required": [
+          "household_code",
+          "zone_id",
+          "latitude",
+          "longitude",
+          "id",
+          "vulnerability_score"
+        ],
+        "title": "HouseholdResponse"
+      },
+      "LandslidePredictRequest": {
+        "properties": {
+          "rainfall_24h": {
+            "type": "number",
+            "title": "Rainfall 24H"
+          },
+          "cumulative_rainfall_7d": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cumulative Rainfall 7D"
+          },
+          "slope": {
+            "type": "number",
+            "title": "Slope",
+            "default": 35.0
+          },
+          "elevation": {
+            "type": "number",
+            "title": "Elevation",
+            "default": 1200.0
+          },
+          "soil_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Soil Type",
+            "default": "clay_loam"
+          },
+          "historical_disasters": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Historical Disasters",
+            "default": 1
+          }
+        },
+        "type": "object",
+        "required": [
+          "rainfall_24h"
+        ],
+        "title": "LandslidePredictRequest"
+      },
+      "LandslidePredictResponse": {
+        "properties": {
+          "risk_level": {
+            "type": "string",
+            "title": "Risk Level"
+          },
+          "risk_score": {
+            "type": "number",
+            "title": "Risk Score"
+          },
+          "model_used": {
+            "type": "string",
+            "title": "Model Used"
+          },
+          "landslide_probability": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Landslide Probability"
+          },
+          "risk_category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Risk Category"
+          },
+          "features_used": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Features Used"
+          },
+          "disclaimer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Disclaimer"
+          }
+        },
+        "type": "object",
+        "required": [
+          "risk_level",
+          "risk_score",
+          "model_used"
+        ],
+        "title": "LandslidePredictResponse"
+      },
+      "LatLng": {
+        "properties": {
+          "lat": {
+            "type": "number",
+            "title": "Lat"
+          },
+          "lng": {
+            "type": "number",
+            "title": "Lng"
+          }
+        },
+        "type": "object",
+        "required": [
+          "lat",
+          "lng"
+        ],
+        "title": "LatLng"
+      },
+      "MeshPacket": {
+        "properties": {
+          "message_id": {
+            "type": "string",
+            "title": "Message Id"
+          },
+          "sender_id": {
+            "type": "string",
+            "title": "Sender Id"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type",
+            "default": "SOS"
+          },
+          "household_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Household Id"
+          },
+          "latitude": {
+            "type": "number",
+            "title": "Latitude"
+          },
+          "longitude": {
+            "type": "number",
+            "title": "Longitude"
+          },
+          "severity": {
+            "type": "string",
+            "title": "Severity",
+            "default": "CRITICAL"
+          },
+          "timestamp": {
+            "type": "integer",
+            "title": "Timestamp"
+          },
+          "ttl": {
+            "type": "integer",
+            "title": "Ttl",
+            "default": 8
+          },
+          "hops": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Hops",
+            "default": []
+          },
+          "payload": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MeshPayload"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "message_id",
+          "sender_id",
+          "latitude",
+          "longitude",
+          "timestamp"
+        ],
+        "title": "MeshPacket"
+      },
+      "MeshPacketAck": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "message_id": {
+            "type": "string",
+            "title": "Message Id"
+          },
+          "action_taken": {
+            "type": "string",
+            "title": "Action Taken"
+          },
+          "associated_sos_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Associated Sos Code"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "message_id",
+          "action_taken"
+        ],
+        "title": "MeshPacketAck"
+      },
+      "MeshPayload": {
+        "properties": {
+          "vulnerabilities": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vulnerabilities",
+            "default": []
+          },
+          "people_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "People Count",
+            "default": 1
+          },
+          "battery_level": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Battery Level",
+            "default": 100
+          }
+        },
+        "type": "object",
+        "title": "MeshPayload"
+      },
+      "PriorityQueueItem": {
+        "properties": {
+          "sos_id": {
+            "type": "integer",
+            "title": "Sos Id"
+          },
+          "sos_code": {
+            "type": "string",
+            "title": "Sos Code"
+          },
+          "household_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Household Code"
+          },
+          "rank": {
+            "type": "integer",
+            "title": "Rank"
+          },
+          "priority_score": {
+            "type": "number",
+            "title": "Priority Score"
+          },
+          "severity": {
+            "type": "string",
+            "title": "Severity"
+          },
+          "severity_component": {
+            "type": "number",
+            "title": "Severity Component"
+          },
+          "vulnerability_component": {
+            "type": "number",
+            "title": "Vulnerability Component"
+          },
+          "risk_component": {
+            "type": "number",
+            "title": "Risk Component"
+          },
+          "isolation_component": {
+            "type": "number",
+            "title": "Isolation Component"
+          },
+          "time_decay_component": {
+            "type": "number",
+            "title": "Time Decay Component",
+            "default": 0.0
+          },
+          "medical_urgency_component": {
+            "type": "number",
+            "title": "Medical Urgency Component",
+            "default": 0.0
+          },
+          "ml_risk_component": {
+            "type": "number",
+            "title": "Ml Risk Component",
+            "default": 0.0
+          },
+          "latitude": {
+            "type": "number",
+            "title": "Latitude"
+          },
+          "longitude": {
+            "type": "number",
+            "title": "Longitude"
+          },
+          "emergency_type": {
+            "type": "string",
+            "title": "Emergency Type"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "elderly_count": {
+            "type": "integer",
+            "title": "Elderly Count",
+            "default": 0
+          },
+          "disabled_count": {
+            "type": "integer",
+            "title": "Disabled Count",
+            "default": 0
+          },
+          "medical_needs": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Medical Needs"
+          },
+          "source_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Type",
+            "default": "MOBILE"
+          },
+          "via_mesh": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Via Mesh",
+            "default": "FALSE"
+          },
+          "hops_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hops Count",
+            "default": 0
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "sos_id",
+          "sos_code",
+          "rank",
+          "priority_score",
+          "severity",
+          "severity_component",
+          "vulnerability_component",
+          "risk_component",
+          "isolation_component",
+          "latitude",
+          "longitude",
+          "emergency_type",
+          "status",
+          "created_at"
+        ],
+        "title": "PriorityQueueItem"
+      },
+      "PriorityQueueResponse": {
+        "properties": {
+          "total_active_sos": {
+            "type": "integer",
+            "title": "Total Active Sos"
+          },
+          "queue": {
+            "items": {
+              "$ref": "#/components/schemas/PriorityQueueItem"
+            },
+            "type": "array",
+            "title": "Queue"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total_active_sos",
+          "queue"
+        ],
+        "title": "PriorityQueueResponse"
+      },
+      "RescueAssignmentResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "sos_id": {
+            "type": "integer",
+            "title": "Sos Id"
+          },
+          "sos_code": {
+            "type": "string",
+            "title": "Sos Code"
+          },
+          "responder_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Responder Id"
+          },
+          "responder_username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Responder Username"
+          },
+          "team_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Team Name"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "assigned_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Assigned At"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "sos_id",
+          "sos_code",
+          "status",
+          "assigned_at"
+        ],
+        "title": "RescueAssignmentResponse"
+      },
+      "RiskZoneResponse": {
+        "properties": {
+          "zone_code": {
+            "type": "string",
+            "title": "Zone Code"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "risk_level": {
+            "type": "string",
+            "title": "Risk Level"
+          },
+          "risk_score": {
+            "type": "number",
+            "title": "Risk Score"
+          },
+          "rainfall_24h": {
+            "type": "number",
+            "title": "Rainfall 24H"
+          },
+          "slope": {
+            "type": "number",
+            "title": "Slope"
+          },
+          "elevation": {
+            "type": "number",
+            "title": "Elevation"
+          },
+          "population": {
+            "type": "integer",
+            "title": "Population"
+          },
+          "vulnerable_population": {
+            "type": "integer",
+            "title": "Vulnerable Population"
+          },
+          "center_lat": {
+            "type": "number",
+            "title": "Center Lat"
+          },
+          "center_lng": {
+            "type": "number",
+            "title": "Center Lng"
+          },
+          "polygon_geojson": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Polygon Geojson"
+          }
+        },
+        "type": "object",
+        "required": [
+          "zone_code",
+          "name",
+          "risk_level",
+          "risk_score",
+          "rainfall_24h",
+          "slope",
+          "elevation",
+          "population",
+          "vulnerable_population",
+          "center_lat",
+          "center_lng"
+        ],
+        "title": "RiskZoneResponse"
+      },
+      "RouteRequest": {
+        "properties": {
+          "origin": {
+            "$ref": "#/components/schemas/LatLng"
+          },
+          "destination": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LatLng"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "target_shelter_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Shelter Code"
+          },
+          "avoid_high_risk": {
+            "type": "boolean",
+            "title": "Avoid High Risk",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "origin"
+        ],
+        "title": "RouteRequest"
+      },
+      "RouteResponse": {
+        "properties": {
+          "origin": {
+            "$ref": "#/components/schemas/LatLng"
+          },
+          "destination": {
+            "$ref": "#/components/schemas/LatLng"
+          },
+          "destination_name": {
+            "type": "string",
+            "title": "Destination Name"
+          },
+          "distance_km": {
+            "type": "number",
+            "title": "Distance Km"
+          },
+          "duration_minutes": {
+            "type": "integer",
+            "title": "Duration Minutes"
+          },
+          "hazard_status": {
+            "type": "string",
+            "title": "Hazard Status"
+          },
+          "bypassed_hazard_zones": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Bypassed Hazard Zones"
+          },
+          "path": {
+            "items": {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            "type": "array",
+            "title": "Path"
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/RouteStep"
+            },
+            "type": "array",
+            "title": "Steps"
+          }
+        },
+        "type": "object",
+        "required": [
+          "origin",
+          "destination",
+          "destination_name",
+          "distance_km",
+          "duration_minutes",
+          "hazard_status",
+          "bypassed_hazard_zones",
+          "path",
+          "steps"
+        ],
+        "title": "RouteResponse"
+      },
+      "RouteStep": {
+        "properties": {
+          "instruction": {
+            "type": "string",
+            "title": "Instruction"
+          },
+          "distance_m": {
+            "type": "number",
+            "title": "Distance M"
+          },
+          "safety_status": {
+            "type": "string",
+            "title": "Safety Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "instruction",
+          "distance_m",
+          "safety_status"
+        ],
+        "title": "RouteStep"
+      },
+      "SOSAssignRequest": {
+        "properties": {
+          "team_name": {
+            "type": "string",
+            "title": "Team Name"
+          },
+          "responder_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Responder Id"
+          },
+          "responder_username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Responder Username"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "team_name"
+        ],
+        "title": "SOSAssignRequest"
+      },
+      "SOSCreate": {
+        "properties": {
+          "household_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Household Code"
+          },
+          "sender_device_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sender Device Id",
+            "default": "MOBILE-CLIENT"
+          },
+          "latitude": {
+            "type": "number",
+            "title": "Latitude"
+          },
+          "longitude": {
+            "type": "number",
+            "title": "Longitude"
+          },
+          "emergency_type": {
+            "type": "string",
+            "title": "Emergency Type",
+            "default": "LANDSLIDE_TRAPPED"
+          },
+          "severity": {
+            "type": "string",
+            "title": "Severity",
+            "default": "HIGH"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "via_mesh": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Via Mesh",
+            "default": "FALSE"
+          },
+          "idempotency_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Idempotency Key"
+          }
+        },
+        "type": "object",
+        "required": [
+          "latitude",
+          "longitude"
+        ],
+        "title": "SOSCreate"
+      },
+      "SOSResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "sos_code": {
+            "type": "string",
+            "title": "Sos Code"
+          },
+          "idempotency_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Idempotency Key"
+          },
+          "user_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Id"
+          },
+          "household_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Household Code"
+          },
+          "sender_device_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sender Device Id"
+          },
+          "latitude": {
+            "type": "number",
+            "title": "Latitude"
+          },
+          "longitude": {
+            "type": "number",
+            "title": "Longitude"
+          },
+          "emergency_type": {
+            "type": "string",
+            "title": "Emergency Type"
+          },
+          "severity": {
+            "type": "string",
+            "title": "Severity"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "priority_score": {
+            "type": "number",
+            "title": "Priority Score"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "assigned_team_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assigned Team Id"
+          },
+          "assigned_shelter_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assigned Shelter Id"
+          },
+          "via_mesh": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Via Mesh",
+            "default": "FALSE"
+          },
+          "hops_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hops Count",
+            "default": 0
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "resolved_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolved At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "sos_code",
+          "latitude",
+          "longitude",
+          "emergency_type",
+          "severity",
+          "status",
+          "priority_score",
+          "created_at"
+        ],
+        "title": "SOSResponse"
+      },
+      "SOSStatusUpdate": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "assigned_team_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assigned Team Id"
+          },
+          "assigned_shelter_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assigned Shelter Id"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "SOSStatusUpdate"
+      },
+      "ShelterOccupancyUpdate": {
+        "properties": {
+          "current_occupancy": {
+            "type": "integer",
+            "title": "Current Occupancy"
+          },
+          "operational_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Operational Status"
+          },
+          "is_safe": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Safe"
+          }
+        },
+        "type": "object",
+        "required": [
+          "current_occupancy"
+        ],
+        "title": "ShelterOccupancyUpdate"
+      },
+      "ShelterResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "shelter_code": {
+            "type": "string",
+            "title": "Shelter Code"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "facility_type": {
+            "type": "string",
+            "title": "Facility Type"
+          },
+          "latitude": {
+            "type": "number",
+            "title": "Latitude"
+          },
+          "longitude": {
+            "type": "number",
+            "title": "Longitude"
+          },
+          "capacity": {
+            "type": "integer",
+            "title": "Capacity"
+          },
+          "current_occupancy": {
+            "type": "integer",
+            "title": "Current Occupancy"
+          },
+          "available_beds": {
+            "type": "integer",
+            "title": "Available Beds"
+          },
+          "has_medical_staff": {
+            "type": "boolean",
+            "title": "Has Medical Staff"
+          },
+          "has_power_backup": {
+            "type": "boolean",
+            "title": "Has Power Backup"
+          },
+          "has_oxygen": {
+            "type": "boolean",
+            "title": "Has Oxygen"
+          },
+          "is_safe": {
+            "type": "boolean",
+            "title": "Is Safe"
+          },
+          "contact_phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contact Phone"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "shelter_code",
+          "name",
+          "facility_type",
+          "latitude",
+          "longitude",
+          "capacity",
+          "current_occupancy",
+          "available_beds",
+          "has_medical_staff",
+          "has_power_backup",
+          "has_oxygen",
+          "is_safe"
+        ],
+        "title": "ShelterResponse"
+      },
+      "TokenRefreshRequest": {
+        "properties": {
+          "refresh_token": {
+            "type": "string",
+            "title": "Refresh Token"
+          }
+        },
+        "type": "object",
+        "required": [
+          "refresh_token"
+        ],
+        "title": "TokenRefreshRequest"
+      },
+      "TokenResponse": {
+        "properties": {
+          "access_token": {
+            "type": "string",
+            "title": "Access Token"
+          },
+          "refresh_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Refresh Token"
+          },
+          "token_type": {
+            "type": "string",
+            "title": "Token Type",
+            "default": "bearer"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role"
+          },
+          "username": {
+            "type": "string",
+            "title": "Username"
+          },
+          "user_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "access_token",
+          "role",
+          "username"
+        ],
+        "title": "TokenResponse"
+      },
+      "UserLogin": {
+        "properties": {
+          "username": {
+            "type": "string",
+            "title": "Username"
+          },
+          "password": {
+            "type": "string",
+            "title": "Password"
+          }
+        },
+        "type": "object",
+        "required": [
+          "username",
+          "password"
+        ],
+        "title": "UserLogin"
+      },
+      "UserRegister": {
+        "properties": {
+          "username": {
+            "type": "string",
+            "maxLength": 50,
+            "minLength": 3,
+            "title": "Username"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 6,
+            "title": "Password"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "email"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role",
+            "default": "CITIZEN"
+          },
+          "full_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Full Name"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          }
+        },
+        "type": "object",
+        "required": [
+          "username",
+          "password"
+        ],
+        "title": "UserRegister"
+      },
+      "UserResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "username": {
+            "type": "string",
+            "title": "Username"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role"
+          },
+          "full_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Full Name"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "username",
+          "role",
+          "is_active",
+          "created_at"
+        ],
+        "title": "UserResponse"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    },
+    "securitySchemes": {
+      "OAuth2PasswordBearer": {
+        "type": "oauth2",
+        "flows": {
+          "password": {
+            "scopes": {},
+            "tokenUrl": "/api/v1/auth/login"
+          }
+        }
+      }
+    }
+  }
+}
