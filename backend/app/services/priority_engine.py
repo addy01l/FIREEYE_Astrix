@@ -1,73 +1,87 @@
 """
-FIRE-EYE Priority Engine v2.0
-Multi-factor triage scoring with ML integration, time-decay, and medical urgency.
+FIRE-EYE Priority Engine
+Directly incorporates fireeye-ai-final priority calculation and ranking logic.
+Formula: Score = Severity(40%) + Vulnerability(30%) + Risk(20%) + Isolation(10%)
+Classifies: HIGH (>=75), MEDIUM (>=40), LOW (<40) with deterministic tie-breaking.
 """
 
 from datetime import datetime
+import math
 from typing import Any
+from sqlalchemy.orm import Session
 
 from app.models.household import Household
 from app.models.risk_zone import RiskZone
 from app.models.sos import SOSRequest
 from app.services.ml_service import predict_risk_at_location
-from sqlalchemy.orm import Session
 
-# ── Severity weights ─────────────────────────────────────────────────────────
-SEVERITY_WEIGHTS = {"CRITICAL": 1.0, "HIGH": 0.75, "MEDIUM": 0.50, "LOW": 0.25}
+# ── Core Weights matching fireeye-ai-final ──────────────────────────────────
+WEIGHTS = {
+    "severity": 0.40,
+    "vulnerability": 0.30,
+    "risk": 0.20,
+    "isolation": 0.10,
+}
 
-# ── Medical urgency keywords → bonus multipliers ─────────────────────────────
-MEDICAL_URGENCY_KEYWORDS = {
-    "oxygen": 8.0,
-    "dialysis": 7.5,
-    "insulin": 7.0,
-    "cardiac": 7.0,
-    "seizure": 6.0,
-    "bleeding": 6.5,
-    "pregnant": 6.0,
-    "ventilator": 9.0,
-    "fracture": 4.0,
-    "unconscious": 8.0,
+SEVERITY_MAP = {
+    "CRITICAL": 95.0,
+    "HIGH": 75.0,
+    "MEDIUM": 50.0,
+    "LOW": 25.0,
 }
 
 
-def _compute_time_decay(created_at: datetime) -> float:
+def validate_sos(sos: dict[str, Any]):
+    """Ensure all required numeric fields exist and are within 0-100 range."""
+    if not isinstance(sos, dict):
+        raise ValueError("Each SOS request must be a dictionary")
+
+    required_fields = ["id", "severity", "vulnerability", "risk", "isolation"]
+    for field in required_fields:
+        if field not in sos:
+            raise ValueError(f"Missing required field: {field}")
+
+    if not isinstance(sos["id"], str) or not sos["id"].strip():
+        raise ValueError("SOS ID must be a non-empty string")
+
+    for field in ["severity", "vulnerability", "risk", "isolation"]:
+        value = sos[field]
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            raise ValueError(f"{field} must be numeric")
+        if not math.isfinite(value) or not 0 <= value <= 100:
+            raise ValueError(f"{field} must be between 0 and 100")
+
+
+def calculate_priority(sos: dict[str, Any]) -> dict[str, Any]:
     """
-    Returns 0.0–1.0 bonus based on how long the SOS has been waiting.
-    Older requests get a higher urgency bump to prevent starvation.
+    Computes priority using the fireeye-ai-final formula:
+    Score = severity*0.40 + vulnerability*0.30 + risk*0.20 + isolation*0.10
     """
-    if not created_at:
-        return 0.5
-    elapsed = datetime.utcnow() - created_at
-    hours = elapsed.total_seconds() / 3600.0
-    # Sigmoid-like curve: ramps sharply after 1h, plateaus at ~6h
-    if hours <= 0.25:
-        return 0.1
-    elif hours <= 1.0:
-        return 0.3
-    elif hours <= 3.0:
-        return 0.6
-    elif hours <= 6.0:
-        return 0.85
+    validate_sos(sos)
+
+    breakdown = {}
+    for factor, weight in WEIGHTS.items():
+        breakdown[factor] = round(sos[factor] * weight, 2)
+
+    score = round(sum(breakdown.values()), 2)
+
+    if score >= 75:
+        level = "HIGH"
+    elif score >= 40:
+        level = "MEDIUM"
     else:
-        return 1.0
+        level = "LOW"
 
-
-def _compute_medical_urgency(medical_needs: str) -> float:
-    """
-    Scans medical notes for critical keywords and returns 0.0–1.0.
-    """
-    if not medical_needs:
-        return 0.0
-    text = medical_needs.lower()
-    max_score = 0.0
-    for keyword, weight in MEDICAL_URGENCY_KEYWORDS.items():
-        if keyword in text:
-            max_score = max(max_score, weight)
-    return min(max_score / 10.0, 1.0)
+    return {
+        "id": sos["id"],
+        "priority_score": score,
+        "priority_level": level,
+        "breakdown": breakdown,
+    }
 
 
 def calculate_priority_score(
-    severity: str,
+    severity: str | float,
     vulnerability_score: float,
     zone_risk_score: float,
     isolation_score: float = 0.7,
@@ -75,52 +89,59 @@ def calculate_priority_score(
     medical_urgency: float = 0.0,
     ml_risk: float = 0.0,
 ) -> dict[str, float]:
-    """
-    Computes priority using the FIRE-EYE multi-factor priority formula v2:
+    """Compatibility wrapper converting variables to fireeye-ai-final breakdown."""
+    sev_val = SEVERITY_MAP.get(str(severity).upper(), 75.0) if isinstance(severity, str) else float(severity)
+    vuln_val = vulnerability_score * 100.0 if vulnerability_score <= 1.0 else vulnerability_score
+    risk_val = zone_risk_score * 100.0 if zone_risk_score <= 1.0 else zone_risk_score
+    iso_val = isolation_score * 100.0 if isolation_score <= 1.0 else isolation_score
 
-    Priority = Severity(30) + Vulnerability(20) + EnvironmentalRisk(15)
-             + Isolation(10) + TimeDecay(10) + MedicalUrgency(10) + ML_Risk(5)
-
-    Max score: 100.0
-    """
-    sev_factor = SEVERITY_WEIGHTS.get(severity.upper(), 0.5)
-
-    comp_severity = round(sev_factor * 30.0, 1)
-    comp_vulnerability = round(min(max(vulnerability_score, 0.0), 1.0) * 20.0, 1)
-    comp_risk = round(min(max(zone_risk_score, 0.0), 1.0) * 15.0, 1)
-    comp_isolation = round(min(max(isolation_score, 0.0), 1.0) * 10.0, 1)
-    comp_time = round(min(max(time_decay, 0.0), 1.0) * 10.0, 1)
-    comp_medical = round(min(max(medical_urgency, 0.0), 1.0) * 10.0, 1)
-    comp_ml = round(min(max(ml_risk, 0.0), 1.0) * 5.0, 1)
-
-    total = round(
-        comp_severity
-        + comp_vulnerability
-        + comp_risk
-        + comp_isolation
-        + comp_time
-        + comp_medical
-        + comp_ml,
-        1,
-    )
-
+    res = calculate_priority({
+        "id": "SOS-CALC",
+        "severity": min(max(sev_val, 0.0), 100.0),
+        "vulnerability": min(max(vuln_val, 0.0), 100.0),
+        "risk": min(max(risk_val, 0.0), 100.0),
+        "isolation": min(max(iso_val, 0.0), 100.0),
+    })
     return {
-        "total_score": total,
-        "comp_severity": comp_severity,
-        "comp_vulnerability": comp_vulnerability,
-        "comp_risk": comp_risk,
-        "comp_isolation": comp_isolation,
-        "comp_time_decay": comp_time,
-        "comp_medical_urgency": comp_medical,
-        "comp_ml_risk": comp_ml,
+        "total_score": res["priority_score"],
+        "comp_severity": res["breakdown"]["severity"],
+        "comp_vulnerability": res["breakdown"]["vulnerability"],
+        "comp_risk": res["breakdown"]["risk"],
+        "comp_isolation": res["breakdown"]["isolation"],
     }
+
+
+def rank_requests(requests: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """
+    Validates, scores, and ranks a list of SOS request dictionaries.
+    Tie-breaking: (-priority_score, id)
+    """
+    if not isinstance(requests, list) or not requests:
+        raise ValueError("SOS requests must be a non-empty list")
+
+    results = []
+    seen_ids = set()
+
+    for sos in requests:
+        result = calculate_priority(sos)
+        if result["id"] in seen_ids:
+            raise ValueError(f"Duplicate SOS ID: {result['id']}")
+        seen_ids.add(result["id"])
+        results.append(result)
+
+    results.sort(key=lambda item: (-item["priority_score"], item["id"]))
+
+    for rank, result in enumerate(results, start=1):
+        result["rank"] = rank
+
+    return results
 
 
 def compute_ranked_rescue_queue(db: Session) -> list[dict[str, Any]]:
     """
-    Fetches all active SOS calls, evaluates live priority scores against
-    household, risk-zone, ML, and time-decay state, and returns a sorted
-    queue ranked #1 to #N.
+    Fetches all active SOS records from the database, evaluates live
+    multi-factor priority scores with the new fireeye-ai-final formula,
+    and returns a sorted queue ranked #1 to #N.
     """
     active_sos = (
         db.query(SOSRequest)
@@ -128,8 +149,10 @@ def compute_ranked_rescue_queue(db: Session) -> list[dict[str, Any]]:
         .all()
     )
 
-    # ── Batch-fetch related data (avoid N+1) ─────────────────────────────
-    household_codes = [sos.household_code for sos in active_sos if sos.household_code]
+    if not active_sos:
+        return []
+
+    household_codes = [s.household_code for s in active_sos if s.household_code]
     households: dict[str, Household] = {}
     zones: dict[str, RiskZone] = {}
 
@@ -148,90 +171,70 @@ def compute_ranked_rescue_queue(db: Session) -> list[dict[str, Any]]:
             )
             zones = {z.zone_code: z for z in zone_results}
 
-    # ── Score each SOS ───────────────────────────────────────────────────
     queue_items = []
 
     for sos in active_sos:
-        household = households.get(sos.household_code) if sos.household_code else None
+        hh = households.get(sos.household_code) if sos.household_code else None
+        zn = zones.get(hh.zone_id) if (hh and hh.zone_id) else None
 
-        vuln_score = household.vulnerability_score if household else 0.5
-        zone = (
-            zones.get(household.zone_id) if (household and household.zone_id) else None
-        )
-        risk_score = zone.risk_score if zone else 0.4
+        # 1. Severity: map string to 0-100
+        sev_val = SEVERITY_MAP.get((sos.severity or "HIGH").upper(), 75.0)
 
-        # Isolation: high-altitude or remote location
-        isolation = (
-            0.85
-            if (
-                household
-                and hasattr(household, "elevation")
-                and household.elevation
-                and household.elevation > 1100
-            )
-            else 0.60
-        )
+        # 2. Vulnerability: normalized to 0-100
+        vuln_score = (hh.vulnerability_score * 100.0) if hh else 50.0
 
-        # Time decay
-        time_decay = _compute_time_decay(sos.created_at)
+        # 3. Environmental Risk: zone risk or ML prediction (0-100)
+        if zn and zn.risk_score:
+            risk_val = zn.risk_score * 100.0
+        else:
+            ml_risk = predict_risk_at_location(sos.latitude, sos.longitude)
+            risk_val = ml_risk * 100.0
 
-        # Medical urgency
-        medical_text = (household.medical_needs or "") if household else ""
-        if sos.notes:
-            medical_text += " " + sos.notes
-        medical_urgency = _compute_medical_urgency(medical_text)
+        # 4. Isolation: based on elevation / remoteness
+        isolation_val = 85.0 if (hh and hh.elevation and hh.elevation > 1100) else 60.0
 
-        # ML environmental risk prediction
-        ml_risk = predict_risk_at_location(sos.latitude, sos.longitude)
+        sos_dict = {
+            "id": sos.sos_code,
+            "severity": min(max(sev_val, 0.0), 100.0),
+            "vulnerability": min(max(vuln_score, 0.0), 100.0),
+            "risk": min(max(risk_val, 0.0), 100.0),
+            "isolation": min(max(isolation_val, 0.0), 100.0),
+        }
 
-        scores = calculate_priority_score(
-            severity=sos.severity,
-            vulnerability_score=vuln_score,
-            zone_risk_score=risk_score,
-            isolation_score=isolation,
-            time_decay=time_decay,
-            medical_urgency=medical_urgency,
-            ml_risk=ml_risk,
-        )
+        priority_calc = calculate_priority(sos_dict)
+        sos.priority_score = priority_calc["priority_score"]
 
-        # Persist computed score
-        sos.priority_score = scores["total_score"]
+        queue_items.append({
+            "sos_id": sos.id,
+            "sos_code": sos.sos_code,
+            "household_code": sos.household_code,
+            "priority_score": priority_calc["priority_score"],
+            "priority_level": priority_calc["priority_level"],
+            "breakdown": priority_calc["breakdown"],
+            "severity": sos.severity,
+            "severity_component": priority_calc["breakdown"]["severity"],
+            "vulnerability_component": priority_calc["breakdown"]["vulnerability"],
+            "risk_component": priority_calc["breakdown"]["risk"],
+            "isolation_component": priority_calc["breakdown"]["isolation"],
+            "latitude": sos.latitude,
+            "longitude": sos.longitude,
+            "emergency_type": sos.emergency_type,
+            "status": sos.status,
+            "source_type": sos.source_type,
+            "via_mesh": sos.via_mesh,
+            "hops_count": sos.hops_count,
+            "notes": sos.notes,
+            "elderly_count": hh.elderly_count if hh else 0,
+            "disabled_count": hh.disabled_count if hh else 0,
+            "medical_needs": hh.medical_needs if hh else None,
+            "created_at": sos.created_at,
+        })
 
-        queue_items.append(
-            {
-                "sos_id": sos.id,
-                "sos_code": sos.sos_code,
-                "household_code": sos.household_code,
-                "priority_score": scores["total_score"],
-                "severity": sos.severity,
-                "severity_component": scores["comp_severity"],
-                "vulnerability_component": scores["comp_vulnerability"],
-                "risk_component": scores["comp_risk"],
-                "isolation_component": scores["comp_isolation"],
-                "time_decay_component": scores["comp_time_decay"],
-                "medical_urgency_component": scores["comp_medical_urgency"],
-                "ml_risk_component": scores["comp_ml_risk"],
-                "latitude": sos.latitude,
-                "longitude": sos.longitude,
-                "emergency_type": sos.emergency_type,
-                "status": sos.status,
-                "source_type": sos.source_type,
-                "via_mesh": sos.via_mesh,
-                "hops_count": sos.hops_count,
-                "notes": sos.notes,
-                "elderly_count": household.elderly_count if household else 0,
-                "disabled_count": household.disabled_count if household else 0,
-                "medical_needs": household.medical_needs if household else None,
-                "created_at": sos.created_at,
-            }
-        )
+    # Sort descending by priority, then by sos_code
+    queue_items.sort(key=lambda item: (-item["priority_score"], item["sos_code"]))
 
-    # Sort descending by priority
-    queue_items.sort(key=lambda x: x["priority_score"], reverse=True)
-
-    # Assign ranks 1 → N
-    for index, item in enumerate(queue_items, start=1):
-        item["rank"] = index
+    for rank, item in enumerate(queue_items, start=1):
+        item["rank"] = rank
 
     db.commit()
     return queue_items

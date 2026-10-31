@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     # ML & Inference
     ML_MODEL_PATH: str = os.getenv(
         "ML_MODEL_PATH",
-        str(ML_DIR / "models" / "landslide_model.joblib")
+        str(ML_DIR / "models" / "risk_model.joblib")
     )
     
     # Mesh Network

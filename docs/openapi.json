@@ -165,6 +165,7 @@
           "Disaster Risk & Prediction"
         ],
         "summary": "Get Risk Zones",
+        "description": "Retrieve all monitored disaster zones and their current hazard status.",
         "operationId": "get_risk_zones_api_v1_disaster_zones_get",
         "responses": {
           "200": {
@@ -190,6 +191,7 @@
           "Disaster Risk & Prediction"
         ],
         "summary": "Predict Landslide",
+        "description": "Run Random Forest model inference for landslide risk prediction.\nSupports both fireeye-ai-final features (rainfall_mm, slope_degrees, elevation_m, soil_type)\nand legacy parameters with calibrated class probabilities.",
         "operationId": "predict_landslide_api_v1_disaster_predict_landslide_post",
         "requestBody": {
           "content": {
@@ -208,6 +210,48 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/LandslidePredictResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/disaster/pipeline": {
+      "post": {
+        "tags": [
+          "Disaster Risk & Prediction"
+        ],
+        "summary": "Execute Intelligence Pipeline",
+        "description": "Executes the FIRE-EYE Unified Intelligence Pipeline:\n1. Predicts environmental hazard risk from geological data\n2. Dynamically injects risk score into active SOS requests\n3. Computes multi-factor priority triage ordering\n4. Evaluates shortest safe road route avoiding blocked sectors",
+        "operationId": "execute_intelligence_pipeline_api_v1_disaster_pipeline_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IntelligencePipelineRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntelligencePipelineResponse"
                 }
               }
             }
@@ -709,6 +753,7 @@
           "Evacuation Routing"
         ],
         "summary": "Get Safe Route",
+        "description": "Generate an evacuation road route avoiding high-risk hazard zones.\nIf the routing service is unavailable, provides an explicit degraded fallback.",
         "operationId": "get_safe_route_api_v1_routing_safe_route_post",
         "requestBody": {
           "content": {
@@ -727,6 +772,48 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RouteResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/routing/network-route": {
+      "post": {
+        "tags": [
+          "Evacuation Routing"
+        ],
+        "summary": "Get Network Route",
+        "description": "Topological route optimizer using Dijkstra's shortest path algorithm\non a designated road network graph with blocked hazard road segment avoidance.",
+        "operationId": "get_network_route_api_v1_routing_network_route_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NetworkRouteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NetworkRouteResponse"
                 }
               }
             }
@@ -1308,10 +1395,157 @@
         ],
         "title": "HouseholdResponse"
       },
+      "IntelligencePipelineRequest": {
+        "properties": {
+          "environmental_data": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Environmental Data"
+          },
+          "sos_requests": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Sos Requests"
+          },
+          "road_network": {
+            "additionalProperties": {
+              "additionalProperties": {
+                "type": "number"
+              },
+              "type": "object"
+            },
+            "type": "object",
+            "title": "Road Network"
+          },
+          "rescue_base": {
+            "type": "string",
+            "title": "Rescue Base"
+          },
+          "destination": {
+            "type": "string",
+            "title": "Destination"
+          },
+          "blocked_roads": {
+            "anyOf": [
+              {
+                "items": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Blocked Roads"
+          }
+        },
+        "type": "object",
+        "required": [
+          "environmental_data",
+          "sos_requests",
+          "road_network",
+          "rescue_base",
+          "destination"
+        ],
+        "title": "IntelligencePipelineRequest"
+      },
+      "IntelligencePipelineResponse": {
+        "properties": {
+          "risk_assessment": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Risk Assessment"
+          },
+          "risk_score_used_for_priority": {
+            "type": "number",
+            "title": "Risk Score Used For Priority"
+          },
+          "ranked_rescue_requests": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Ranked Rescue Requests"
+          },
+          "route_plan": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Route Plan"
+          }
+        },
+        "type": "object",
+        "required": [
+          "risk_assessment",
+          "risk_score_used_for_priority",
+          "ranked_rescue_requests",
+          "route_plan"
+        ],
+        "title": "IntelligencePipelineResponse"
+      },
       "LandslidePredictRequest": {
         "properties": {
+          "rainfall_mm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rainfall Mm"
+          },
+          "slope_degrees": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slope Degrees"
+          },
+          "elevation_m": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Elevation M"
+          },
+          "soil_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Soil Type",
+            "default": "Clay"
+          },
           "rainfall_24h": {
-            "type": "number",
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Rainfall 24H"
           },
           "cumulative_rainfall_7d": {
@@ -1326,26 +1560,26 @@
             "title": "Cumulative Rainfall 7D"
           },
           "slope": {
-            "type": "number",
-            "title": "Slope",
-            "default": 35.0
-          },
-          "elevation": {
-            "type": "number",
-            "title": "Elevation",
-            "default": 1200.0
-          },
-          "soil_type": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "number"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Soil Type",
-            "default": "clay_loam"
+            "title": "Slope"
+          },
+          "elevation": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Elevation"
           },
           "historical_disasters": {
             "anyOf": [
@@ -1361,9 +1595,6 @@
           }
         },
         "type": "object",
-        "required": [
-          "rainfall_24h"
-        ],
         "title": "LandslidePredictRequest"
       },
       "LandslidePredictResponse": {
@@ -1401,6 +1632,20 @@
               }
             ],
             "title": "Risk Category"
+          },
+          "class_probabilities": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "number"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Class Probabilities"
           },
           "features_used": {
             "anyOf": [
@@ -1605,6 +1850,95 @@
         "type": "object",
         "title": "MeshPayload"
       },
+      "NetworkRouteRequest": {
+        "properties": {
+          "graph": {
+            "additionalProperties": {
+              "additionalProperties": {
+                "type": "number"
+              },
+              "type": "object"
+            },
+            "type": "object",
+            "title": "Graph"
+          },
+          "start": {
+            "type": "string",
+            "title": "Start"
+          },
+          "destination": {
+            "type": "string",
+            "title": "Destination"
+          },
+          "blocked_roads": {
+            "anyOf": [
+              {
+                "items": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Blocked Roads"
+          }
+        },
+        "type": "object",
+        "required": [
+          "graph",
+          "start",
+          "destination"
+        ],
+        "title": "NetworkRouteRequest"
+      },
+      "NetworkRouteResponse": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "route": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Route"
+          },
+          "total_distance": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Distance"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "route"
+        ],
+        "title": "NetworkRouteResponse"
+      },
       "PriorityQueueItem": {
         "properties": {
           "sos_id": {
@@ -1634,6 +1968,32 @@
             "type": "number",
             "title": "Priority Score"
           },
+          "priority_level": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Priority Level",
+            "default": "MEDIUM"
+          },
+          "breakdown": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "number"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Breakdown"
+          },
           "severity": {
             "type": "string",
             "title": "Severity"
@@ -1653,21 +2013,6 @@
           "isolation_component": {
             "type": "number",
             "title": "Isolation Component"
-          },
-          "time_decay_component": {
-            "type": "number",
-            "title": "Time Decay Component",
-            "default": 0.0
-          },
-          "medical_urgency_component": {
-            "type": "number",
-            "title": "Medical Urgency Component",
-            "default": 0.0
-          },
-          "ml_risk_component": {
-            "type": "number",
-            "title": "Ml Risk Component",
-            "default": 0.0
           },
           "latitude": {
             "type": "number",
@@ -2048,6 +2393,41 @@
             },
             "type": "array",
             "title": "Steps"
+          },
+          "is_verified_safe": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Verified Safe",
+            "default": true
+          },
+          "routing_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Routing Status",
+            "default": "CONFIRMED_ROAD_ROUTE"
+          },
+          "warning": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Warning"
           }
         },
         "type": "object",

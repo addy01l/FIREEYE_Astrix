@@ -29,7 +29,7 @@ FIRE-EYE is a resilient disaster management backend and emergency response platf
 │   │   ├── services/       # ML inference, priority engine, routing, mesh gateway
 │   │   ├── database.py     # Database engine & session factory
 │   │   └── main.py         # FastAPI application entry point
-│   ├── tests/              # 13 comprehensive pytest integration tests (100% pass)
+│   ├── tests/              # 16 comprehensive pytest integration tests (100% pass)
 │   ├── alembic/            # Database migration management
 │   ├── Dockerfile          # Production container specification
 │   ├── requirements.txt    # Locked Python dependencies
@@ -40,11 +40,14 @@ FIRE-EYE is a resilient disaster management backend and emergency response platf
 │   ├── API_SPEC.md         # API specification and contract details
 │   ├── OFFLINE_PROTOCOL.md # Store-and-forward mesh packet specification
 │   └── DEMO_SCRIPT.md      # Disaster scenario demonstration script
-├── ml/
-│   ├── dataset/            # Historical landslide geological dataset
-│   ├── models/             # Pre-trained Random Forest joblib model artifact
-│   ├── train.py            # Model training pipeline
-│   └── predict.py          # Standalone prediction script
+├── ml/                     # AI & Intelligence Core (from fireeye-ai-final)
+│   ├── data/               # Synthetic geological training data
+│   ├── models/             # Retrained Random Forest pipeline (risk_model.joblib)
+│   ├── intelligence_pipeline.py # Unified 4-stage AI risk-priority-route pipeline
+│   ├── priority_engine.py  # 4-factor triage formula (40/30/20/10)
+│   ├── risk_prediction.py  # Categorical soil + environmental inference
+│   ├── route_optimizer.py  # Dijkstra shortest route with blocked road handling
+│   └── train_model.py      # ML training pipeline (87% accuracy)
 └── simulation/
     ├── mesh_simulator.py   # Multi-hop mesh node store-and-forward simulator
     └── scenario_runner.py  # End-to-end disaster scenario simulator

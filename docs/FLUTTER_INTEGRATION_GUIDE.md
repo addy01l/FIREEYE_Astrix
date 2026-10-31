@@ -206,34 +206,64 @@ Assign responder team and generate audit trail:
 ### 5.3 Priority Queue (`/priority`)
 
 #### `GET /priority/queue`
-Returns sorted rescue priority queue evaluated with:
-$$\text{Score} = \text{Severity} (30) + \text{Vulnerability} (20) + \text{Zone Risk} (15) + \text{Isolation} (10) + \text{Time Decay} (10) + \text{Medical Urgency} (10) + \text{ML Risk} (5)$$
+Returns sorted rescue priority queue evaluated with the official **FIRE-EYE Multi-Factor Formula**:
+$$\text{Score} = \text{Severity} \times 0.40 + \text{Vulnerability} \times 0.30 + \text{Risk} \times 0.20 + \text{Isolation} \times 0.10$$
+
+**Response Item Breakdown:**
+- `priority_score`: continuous score (0.0 to 100.0)
+- `priority_level`: `"HIGH"` ($\ge 75$), `"MEDIUM"` ($\ge 40$), or `"LOW"` ($< 40$)
+- `breakdown`:
+  ```json
+  {
+    "severity": 38.0,
+    "vulnerability": 27.6,
+    "risk": 18.0,
+    "isolation": 8.5
+  }
+  ```
 
 ---
 
-### 5.4 Hazard Zones & ML Prediction (`/disaster`)
+### 5.4 Hazard Zones, ML Prediction & Intelligence Pipeline (`/disaster`)
 
 #### `GET /disaster/zones`
 Monitored disaster zones, real-time risk level (`LOW`, `MEDIUM`, `HIGH`), polygon coordinates, and rainfall.
 
 #### `POST /disaster/predict/landslide`
-Runs the Random Forest ML model:
+Runs the Random Forest Pipeline with OneHotEncoded soil type:
 ```json
 {
-  "rainfall_24h": 185.0,
-  "cumulative_rainfall_7d": 380.0,
-  "slope": 38.0,
-  "elevation": 1250.0,
-  "historical_disasters": 2
+  "rainfall_mm": 300.0,
+  "slope_degrees": 50.0,
+  "elevation_m": 1800.0,
+  "soil_type": "Clay"
 }
 ```
+**Response:**
+```json
+{
+  "risk_level": "HIGH",
+  "risk_score": 0.88,
+  "landslide_probability": 0.957,
+  "class_probabilities": {
+    "HIGH": 95.7,
+    "LOW": 0.0,
+    "MEDIUM": 4.3
+  },
+  "model_used": "FIRE_EYE_RandomForest_v2"
+}
+```
+*Valid soil types: `"Clay"`, `"Silty"`, `"Loamy"`, `"Sandy"`, `"Rocky"`.*
+
+#### `POST /disaster/pipeline`
+Executes the Unified Intelligence Pipeline: predicts risk -> updates SOS queue priorities -> computes Dijkstra shortest path avoiding hazard blocked roads.
 
 ---
 
 ### 5.5 Evacuation Routing & Shelters (`/routing`, `/shelters`)
 
 #### `POST /routing/safe-route`
-Calculates road routing with automatic hazard zone avoidance:
+Calculates geographic road routing with automatic hazard zone avoidance:
 ```json
 {
   "origin": { "lat": 30.2846, "lng": 78.9815 },
@@ -241,9 +271,30 @@ Calculates road routing with automatic hazard zone avoidance:
   "avoid_high_risk": true
 }
 ```
-**Response Key Points:**
-- `is_verified_safe`: `true` if OpenRouteService verified road navigation avoiding hazard polygons.
-- If network/routing provider is offline, returns `routing_status: "DEGRADED_STRAIGHT_LINE"` and `is_verified_safe: false` with explicit safety warnings.
+
+#### `POST /routing/network-route`
+Topological graph shortest route using Dijkstra algorithm with blocked road avoidance:
+```json
+{
+  "graph": {
+    "Base": {"Village_A": 5, "Village_B": 10},
+    "Village_A": {"Base": 5, "Hospital": 8},
+    "Village_B": {"Base": 10, "Hospital": 4},
+    "Hospital": {"Village_A": 8, "Village_B": 4}
+  },
+  "start": "Base",
+  "destination": "Hospital",
+  "blocked_roads": [["Base", "Village_A"]]
+}
+```
+**Response:**
+```json
+{
+  "success": true,
+  "route": ["Base", "Village_B", "Hospital"],
+  "total_distance": 14.0
+}
+```
 
 #### `GET /shelters/`
 List emergency shelters with live `available_beds`, `operational_status`, and medical facilities.

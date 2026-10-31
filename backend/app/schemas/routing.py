@@ -29,3 +29,20 @@ class RouteResponse(BaseModel):
     bypassed_hazard_zones: list[str]
     path: list[list[float]]
     steps: list[RouteStep]
+    is_verified_safe: bool | None = True
+    routing_status: str | None = "CONFIRMED_ROAD_ROUTE"
+    warning: str | None = None
+
+
+class NetworkRouteRequest(BaseModel):
+    graph: dict[str, dict[str, float]]
+    start: str
+    destination: str
+    blocked_roads: list[list[str]] | None = None
+
+
+class NetworkRouteResponse(BaseModel):
+    success: bool
+    route: list[str]
+    total_distance: float | None = None
+    message: str | None = None

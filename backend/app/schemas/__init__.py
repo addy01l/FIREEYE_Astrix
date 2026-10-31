@@ -16,9 +16,16 @@ from app.schemas.risk import (
     RiskZoneResponse,
     LandslidePredictRequest,
     LandslidePredictResponse,
+    IntelligencePipelineRequest,
+    IntelligencePipelineResponse,
 )
-from app.schemas.priority import PriorityQueueResponse, PriorityItem
-from app.schemas.routing import RouteRequest, RouteResponse
+from app.schemas.priority import PriorityQueueResponse, PriorityItem, PriorityQueueItem
+from app.schemas.routing import (
+    RouteRequest,
+    RouteResponse,
+    NetworkRouteRequest,
+    NetworkRouteResponse,
+)
 from app.schemas.shelter import ShelterResponse
 from app.schemas.mesh import MeshPacket, MeshPacketAck
 from app.schemas.rescue_assignment import (
@@ -42,10 +49,15 @@ __all__ = [
     "RiskZoneResponse",
     "LandslidePredictRequest",
     "LandslidePredictResponse",
+    "IntelligencePipelineRequest",
+    "IntelligencePipelineResponse",
     "PriorityQueueResponse",
     "PriorityItem",
+    "PriorityQueueItem",
     "RouteRequest",
     "RouteResponse",
+    "NetworkRouteRequest",
+    "NetworkRouteResponse",
     "ShelterResponse",
     "MeshPacket",
     "MeshPacketAck",

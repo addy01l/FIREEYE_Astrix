@@ -1,14 +1,27 @@
-from app.database import get_db
-from app.schemas.routing import RouteRequest, RouteResponse
-from app.services.routing_engine import generate_safe_evacuation_route
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+
+from app.database import get_db
+from app.schemas.routing import (
+    NetworkRouteRequest,
+    NetworkRouteResponse,
+    RouteRequest,
+    RouteResponse,
+)
+from app.services.routing_engine import (
+    generate_safe_evacuation_route,
+    shortest_route,
+)
 
 router = APIRouter()
 
 
 @router.post("/safe-route", response_model=RouteResponse)
 def get_safe_route(route_req: RouteRequest, db: Session = Depends(get_db)):
+    """
+    Generate an evacuation road route avoiding high-risk hazard zones.
+    If the routing service is unavailable, provides an explicit degraded fallback.
+    """
     return generate_safe_evacuation_route(
         db=db,
         origin_lat=route_req.origin.lat,
@@ -18,3 +31,24 @@ def get_safe_route(route_req: RouteRequest, db: Session = Depends(get_db)):
         target_shelter_code=route_req.target_shelter_code,
         avoid_high_risk=route_req.avoid_high_risk,
     )
+
+
+@router.post("/network-route", response_model=NetworkRouteResponse)
+def get_network_route(req: NetworkRouteRequest):
+    """
+    Topological route optimizer using Dijkstra's shortest path algorithm
+    on a designated road network graph with blocked hazard road segment avoidance.
+    """
+    try:
+        blocked = [tuple(r) for r in req.blocked_roads] if req.blocked_roads else None
+        return shortest_route(
+            graph=req.graph,
+            start=req.start,
+            destination=req.destination,
+            blocked_roads=blocked,
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )

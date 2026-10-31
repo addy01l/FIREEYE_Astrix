@@ -8,14 +8,13 @@ class PriorityQueueItem(BaseModel):
     household_code: str | None = None
     rank: int
     priority_score: float
+    priority_level: str | None = "MEDIUM"
+    breakdown: dict[str, float] | None = None
     severity: str
     severity_component: float
     vulnerability_component: float
     risk_component: float
     isolation_component: float
-    time_decay_component: float = 0.0
-    medical_urgency_component: float = 0.0
-    ml_risk_component: float = 0.0
     latitude: float
     longitude: float
     emergency_type: str

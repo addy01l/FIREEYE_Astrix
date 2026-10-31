@@ -1,8 +1,17 @@
+"""
+FIRE-EYE Evacuation Routing & Route Optimization Engine
+Combines:
+1. Dijkstra shortest route graph algorithm with blocked road avoidance (from fireeye-ai-final).
+2. OpenRouteService road routing with high-risk hazard zone polygon bypass.
+3. Failsafe: degraded straight line with explicit UNVERIFIED safety warnings when road service is offline.
+"""
+
+import heapq
 import logging
 import math
 from typing import Any
-import requests
 import polyline
+import requests
 
 from app.core.config import settings
 from app.models.risk_zone import RiskZone
@@ -12,6 +21,79 @@ from sqlalchemy.orm import Session
 logger = logging.getLogger("fire-eye.routing")
 
 
+# ── 1. Graph Route Optimizer (Dijkstra from fireeye-ai-final) ────────────────
+def shortest_route(
+    graph: dict[str, dict[str, float]],
+    start: str,
+    destination: str,
+    blocked_roads: list[tuple[str, str]] | None = None
+) -> dict[str, Any]:
+    """
+    Finds shortest route through road network graph while avoiding blocked road segments.
+    Direct implementation of fireeye-ai-final/route_optimizer.py.
+    """
+    if start not in graph:
+        raise ValueError(f"Unknown starting location: {start}")
+    if destination not in graph:
+        raise ValueError(f"Unknown destination: {destination}")
+
+    blocked_roads = blocked_roads or []
+    blocked = {frozenset(road) for road in blocked_roads}
+
+    distances = {node: math.inf for node in graph}
+    previous = {node: None for node in graph}
+    distances[start] = 0
+
+    priority_queue = [(0, start)]
+
+    while priority_queue:
+        current_distance, current_node = heapq.heappop(priority_queue)
+
+        if current_distance > distances[current_node]:
+            continue
+
+        if current_node == destination:
+            break
+
+        for neighbor, road_distance in graph[current_node].items():
+            if neighbor not in graph:
+                raise ValueError(f"Unknown road destination: {neighbor}")
+
+            if road_distance < 0 or not math.isfinite(road_distance):
+                raise ValueError("Road distances must be finite and non-negative")
+
+            if frozenset((current_node, neighbor)) in blocked:
+                continue
+
+            new_distance = current_distance + road_distance
+            if new_distance < distances[neighbor]:
+                distances[neighbor] = new_distance
+                previous[neighbor] = current_node
+                heapq.heappush(priority_queue, (new_distance, neighbor))
+
+    if distances[destination] == math.inf:
+        return {
+            "success": False,
+            "message": "No available route found",
+            "route": [],
+            "total_distance": None,
+        }
+
+    route = []
+    current = destination
+    while current is not None:
+        route.append(current)
+        current = previous[current]
+    route.reverse()
+
+    return {
+        "success": True,
+        "route": route,
+        "total_distance": distances[destination],
+    }
+
+
+# ── 2. Geospatial Utilities ──────────────────────────────────────────────────
 def calculate_haversine_distance(
     lat1: float, lon1: float, lat2: float, lon2: float
 ) -> float:
@@ -28,6 +110,7 @@ def calculate_haversine_distance(
     return round(R * c, 2)
 
 
+# ── 3. OpenRouteService Hazard-Aware Evacuation Route ────────────────────────
 def generate_safe_evacuation_route(
     db: Session,
     origin_lat: float,
@@ -37,6 +120,10 @@ def generate_safe_evacuation_route(
     target_shelter_code: str | None = None,
     avoid_high_risk: bool = True,
 ) -> dict[str, Any]:
+    """
+    Computes an evacuation route using OpenRouteService with hazard polygon avoidance.
+    If unavailable, provides explicit degraded straight-line fallback with hazard warnings.
+    """
     destination_name = "Emergency Safe Shelter"
     target_shelter = None
 
@@ -72,14 +159,14 @@ def generate_safe_evacuation_route(
         dest_lng = origin_lng + 0.03
         destination_name = "Civil Defense Base Camp"
 
-    # Gather High Risk Zones
+    # High Risk Zones to avoid
     high_risk_zones = db.query(RiskZone).filter(RiskZone.risk_level == "HIGH").all()
     bypassed_zones = []
-
     avoid_polygons = []
+
     if avoid_high_risk:
         for zone in high_risk_zones:
-            offset = 0.018  # roughly 2km buffer
+            offset = 0.018  # ~2km buffer
             polygon = [
                 [zone.center_lng - offset, zone.center_lat - offset],
                 [zone.center_lng + offset, zone.center_lat - offset],
@@ -119,7 +206,7 @@ def generate_safe_evacuation_route(
         data = resp.json()
 
         if "error" in data or "routes" not in data or not data["routes"]:
-            raise Exception(f"ORS Routing response error: {data.get('error')}")
+            raise Exception(f"ORS Error: {data.get('error')}")
 
         route = data["routes"][0]
         geom = route["geometry"]
@@ -130,17 +217,15 @@ def generate_safe_evacuation_route(
 
         steps = []
         for segment in route["segments"][0]["steps"]:
-            steps.append(
-                {
-                    "instruction": segment["instruction"],
-                    "distance_m": segment["distance"],
-                    "safety_status": (
-                        "MONITORED"
-                        if "avoid" not in segment["instruction"].lower()
-                        else "SAFE_HIGH_GROUND"
-                    ),
-                }
-            )
+            steps.append({
+                "instruction": segment["instruction"],
+                "distance_m": segment["distance"],
+                "safety_status": (
+                    "MONITORED"
+                    if "avoid" not in segment["instruction"].lower()
+                    else "SAFE_HIGH_GROUND"
+                ),
+            })
 
         return {
             "origin": {"lat": origin_lat, "lng": origin_lng},
@@ -157,9 +242,7 @@ def generate_safe_evacuation_route(
         }
 
     except Exception as e:
-        logger.warning(f"ORS routing unavailable ({e}). Generating degraded fallback with explicit warning.")
-
-        # Explicit degraded result as required by safety principles
+        logger.warning(f"ORS routing unavailable ({e}). Generating degraded fallback.")
         total_dist = calculate_haversine_distance(
             origin_lat, origin_lng, dest_lat, dest_lng
         )
@@ -173,7 +256,7 @@ def generate_safe_evacuation_route(
             "bypassed_hazard_zones": bypassed_zones,
             "is_verified_safe": False,
             "routing_status": "DEGRADED_STRAIGHT_LINE",
-            "warning": "Active road navigation service is unavailable. Path is direct geometric guidance and NOT verified safe from ground hazards.",
+            "warning": "Road network service is unavailable. Path is direct geometric guidance and NOT verified safe.",
             "path": [[origin_lat, origin_lng], [dest_lat, dest_lng]],
             "steps": [
                 {
