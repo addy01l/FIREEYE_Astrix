@@ -37,14 +37,15 @@ def process_mesh_packet(db: Session, packet: MeshPacket) -> dict[str, Any]:
     try:
         from app.redis_client import redis_client
         redis_key = f"mesh_seen:{packet.message_id}"
-        if redis_client.exists(redis_key):
-            return {
-                "status": "DUPLICATE_DROPPED",
-                "message_id": packet.message_id,
-                "action_taken": "Ignored",
-                "associated_sos_code": None,
-            }
-        redis_client.setex(redis_key, 86400, "seen")
+        if redis_client is not None:
+            if redis_client.exists(redis_key):
+                return {
+                    "status": "DUPLICATE_DROPPED",
+                    "message_id": packet.message_id,
+                    "action_taken": "Ignored",
+                    "associated_sos_code": None,
+                }
+            redis_client.set(redis_key, "seen", ex=86400)
     except Exception as e:
         logger.debug(f"Redis unavailable, relying on database deduplication: {e}")
 

@@ -56,7 +56,19 @@ app.include_router(api_router, prefix=settings.API_V1_STR)
 
 @app.get("/health")
 def health_check():
-    return {"status": "ok", "service": settings.PROJECT_NAME}
+    redis_status = "disconnected"
+    try:
+        from app.redis_client import redis_client
+        if redis_client is not None and redis_client.ping():
+            redis_status = "connected"
+    except Exception:
+        redis_status = "unreachable"
+
+    return {
+        "status": "ok",
+        "service": settings.PROJECT_NAME,
+        "redis": redis_status,
+    }
 
 
 if __name__ == "__main__":
