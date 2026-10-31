@@ -461,7 +461,7 @@ class MainActivity : FlutterActivity() {
                         if (characteristic != null) {
                             // If local device has an active SOS payload, push it directly to peer
                             val localPayload = currentPayloadJson
-                            if (localPayload != null && localPayload.contains(""message_type":"SOS"")) {
+                            if (localPayload != null && localPayload.contains("\"message_type\":\"SOS\"")) {
                                 try {
                                     val bytes = localPayload.toByteArray(StandardCharsets.UTF_8)
                                     characteristic.value = bytes
