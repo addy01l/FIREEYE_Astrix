@@ -1,8 +1,10 @@
 
+from pathlib import Path
 import joblib
 import pandas as pd
 
-model = joblib.load("models/risk_model.joblib")
+BASE_DIR = Path(__file__).resolve().parent
+model = joblib.load(BASE_DIR / "models" / "risk_model.joblib")
 
 classifier = model.named_steps["classifier"]
 preprocessor = model.named_steps["preprocessor"]

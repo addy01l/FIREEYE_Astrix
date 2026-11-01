@@ -22,7 +22,7 @@ def get_live_weather(lat: float, lon: float) -> dict[str, Any]:
     Returns real temperature, precipitation, 24h rainfall sum, humidity, and wind speed.
     """
     cache_key = (round(lat, 2), round(lon, 2))
-    now = datetime.utcnow()
+    now = datetime.now()
 
     if cache_key in _WEATHER_CACHE:
         cached_time, cached_data = _WEATHER_CACHE[cache_key]

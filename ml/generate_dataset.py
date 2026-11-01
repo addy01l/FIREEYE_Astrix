@@ -73,7 +73,8 @@ df = pd.DataFrame({
 })
 
 # Save CSV
-output_dir = Path("data")
+BASE_DIR = Path(__file__).resolve().parent
+output_dir = BASE_DIR / "data"
 output_dir.mkdir(exist_ok=True)
 
 file_path = output_dir / "synthetic_landslide_data.csv"

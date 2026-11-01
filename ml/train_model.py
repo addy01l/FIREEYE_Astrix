@@ -15,8 +15,9 @@ from sklearn.metrics import (
     confusion_matrix
 )
 
+BASE_DIR = Path(__file__).resolve().parent
 # Load dataset
-df = pd.read_csv("data/synthetic_landslide_data.csv")
+df = pd.read_csv(BASE_DIR / "data" / "synthetic_landslide_data.csv")
 
 # Separate features and target
 X = df.drop("risk_level", axis=1)
@@ -91,9 +92,9 @@ print("Confusion Matrix:")
 print(confusion_matrix(y_test, y_pred, labels=labels))
 
 # Save model
-Path("models").mkdir(exist_ok=True)
+(BASE_DIR / "models").mkdir(exist_ok=True)
 
-joblib.dump(model, "models/risk_model.joblib")
+joblib.dump(model, BASE_DIR / "models" / "risk_model.joblib")
 
 print("\nModel saved successfully!")
 print("Location: models/risk_model.joblib")
