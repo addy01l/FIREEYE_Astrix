@@ -151,7 +151,7 @@ async def create_sos(
 
 @router.get("/active", response_model=list[SOSResponse])
 def get_active_sos(
-    current_user: User = Depends(require_roles([UserRole.RESCUE, UserRole.ADMIN])),
+    current_user: Optional[User] = Depends(get_optional_user),
     db: Session = Depends(get_db),
 ):
     """Retrieve all unresolved active SOS requests sorted by priority."""
@@ -180,7 +180,7 @@ def get_my_sos_requests(
 @router.get("/{sos_id}", response_model=SOSResponse)
 def get_sos_by_id(
     sos_id: str,
-    current_user: User = Depends(require_roles([UserRole.RESCUE, UserRole.ADMIN])),
+    current_user: Optional[User] = Depends(get_optional_user),
     db: Session = Depends(get_db),
 ):
     """Retrieve details for a single SOS request by ID or code."""

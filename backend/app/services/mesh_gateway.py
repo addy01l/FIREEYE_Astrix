@@ -98,21 +98,27 @@ def process_mesh_packet(db: Session, packet: MeshPacket) -> dict[str, Any]:
             sos_code = f"SOS-MESH-{str(uuid.uuid4())[:6].upper()}"
 
             # Predict Real-Time Hazard Risk & Priority using Real Weather & OSRM Distance
-            from app.services.weather_service import calculate_real_sos_priority
+            try:
+                from app.services.weather_service import calculate_real_sos_priority
 
-            vulns = packet.payload.vulnerabilities if packet.payload and packet.payload.vulnerabilities else []
-            p_res = calculate_real_sos_priority(
-                lat=packet.latitude,
-                lon=packet.longitude,
-                severity=packet.severity,
-                people_count=packet.payload.people_count if packet.payload and packet.payload.people_count else 1,
-                vulnerabilities=vulns,
-                emergency_type="BLE Mesh Emergency",
-                db=db,
-            )
-            final_priority = p_res["priority_score"]
-            tel = p_res.get("real_telemetry", {})
-            real_info = f" | Real Weather: {tel.get('temperature_c')}°C, Rain: {tel.get('rainfall_24h_mm')}mm, OSRM Route: {tel.get('osrm_road_distance_km')}km to {tel.get('nearest_shelter')}"
+                vulns = packet.payload.vulnerabilities if packet.payload and packet.payload.vulnerabilities else []
+                p_res = calculate_real_sos_priority(
+                    lat=packet.latitude,
+                    lon=packet.longitude,
+                    severity=packet.severity,
+                    people_count=packet.payload.people_count if packet.payload and packet.payload.people_count else 1,
+                    vulnerabilities=vulns,
+                    emergency_type="BLE Mesh Emergency",
+                    db=db,
+                )
+                final_priority = p_res["priority_score"]
+                tel = p_res.get("real_telemetry", {})
+                real_info = f" | Real Weather: {tel.get('temperature_c')}°C, Rain: {tel.get('rainfall_24h_mm')}mm, OSRM Route: {tel.get('osrm_road_distance_km')}km to {tel.get('nearest_shelter')}"
+            except Exception as e:
+                logger.warning(f"Live telemetry/OSRM scoring deferred for mesh packet: {e}")
+                reported_severity = (packet.severity or "").upper()
+                final_priority = {"CRITICAL": 100.0, "HIGH": 75.0, "MEDIUM": 50.0, "LOW": 25.0}.get(reported_severity, 85.0)
+                real_info = " [Priority calculated from reported emergency severity]"
 
             notes = f"Mesh Hop Count: {len(packet.hops)}. Trail: {' -> '.join(packet.hops)}"
             if packet.payload and packet.payload.vulnerabilities:

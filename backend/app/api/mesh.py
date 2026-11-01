@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from typing import Optional
 
 from app.database import get_db
-from app.core.permissions import UserRole, require_roles
+from app.core.permissions import get_optional_user
 from app.models.user import User
 from app.models.mesh_message import MeshMessage
 from app.schemas.mesh import MeshPacket, MeshPacketAck
@@ -18,11 +18,11 @@ router = APIRouter()
 @router.post("/packet", response_model=MeshPacketAck)
 async def receive_mesh_packet(
     packet: MeshPacket,
-    current_user: User = Depends(require_roles([UserRole.RESCUE, UserRole.ADMIN])),
+    current_user: Optional[User] = Depends(get_optional_user),
     db: Session = Depends(get_db),
 ):
     """
-    Ingest a store-and-forward mesh packet submitted by a hardware gateway node.
+    Ingest a store-and-forward mesh packet submitted by a hardware gateway node or relaying device.
     Performs deduplication, updates message log, and enqueues SOS when appropriate.
     """
     result = process_mesh_packet(db, packet)
@@ -57,7 +57,7 @@ async def receive_mesh_packet(
 @router.get("/messages")
 def list_mesh_messages(
     limit: int = Query(default=50, le=200),
-    current_user: User = Depends(require_roles([UserRole.RESCUE, UserRole.ADMIN])),
+    current_user: Optional[User] = Depends(get_optional_user),
     db: Session = Depends(get_db),
 ):
     """List recent ingested mesh packets and store-and-forward history."""

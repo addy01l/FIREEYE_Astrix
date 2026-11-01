@@ -64,16 +64,38 @@ def get_current_user(
         if not auth_id or not email:
             raise credentials_exception
         app_metadata = payload.get("app_metadata") or {}
-        claimed_role = str(app_metadata.get("role", "CITIZEN")).upper()
-        role_map = {"RESCUER": "RESCUE", "RESCUE": "RESCUE", "COMMAND_CENTER": "ADMIN", "ADMIN": "ADMIN", "CITIZEN": "CITIZEN"}
-        role = role_map.get(claimed_role, "CITIZEN")
+        user_metadata = payload.get("user_metadata") or {}
+        raw_role = app_metadata.get("role") or user_metadata.get("role")
+        role_map = {
+            "RESCUER": "RESCUE",
+            "RESCUE": "RESCUE",
+            "COMMAND_CENTER": "ADMIN",
+            "ADMIN": "ADMIN",
+            "VOLUNTEER": "VOLUNTEER",
+            "CITIZEN": "CITIZEN",
+        }
+        if raw_role:
+            role = role_map.get(str(raw_role).upper(), "RESCUE")
+        else:
+            # Users logging in through the official Rescuers & Officials Console
+            # are granted RESCUE role by default so active dispatches are accessible.
+            role = "RESCUE"
+
         username = f"sb_{str(auth_id).replace('-', '')[:40]}"
         user = db.query(User).filter(User.email == email).first()
         if user is None:
-            user = User(username=username, email=email, hashed_password="SUPABASE_AUTH", role=role, full_name=(payload.get("user_metadata") or {}).get("full_name"), is_active=True)
+            user = User(
+                username=username,
+                email=email,
+                hashed_password="SUPABASE_AUTH",
+                role=role,
+                full_name=user_metadata.get("full_name") or email.split("@")[0],
+                is_active=True,
+            )
             db.add(user)
         else:
-            user.role = role
+            if user.role not in [UserRole.ADMIN, UserRole.RESCUE]:
+                user.role = role
             user.is_active = True
         db.commit()
         db.refresh(user)

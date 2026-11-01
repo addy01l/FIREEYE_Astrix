@@ -6,7 +6,10 @@ import '../../core/network/api_client.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_theme.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/incident_provider.dart';
 import '../../providers/shelter_provider.dart';
+import '../../providers/victim_provider.dart';
+import '../../services/mesh/mesh_manager.dart';
 import '../main_navigation_shell.dart';
 import '../sos/emergency_help_screen.dart';
 
@@ -111,6 +114,11 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     );
 
     if (success && mounted) {
+      try {
+        context.read<IncidentProvider>().fetchIncidents();
+        context.read<VictimProvider>().fetchVictims();
+        MeshManager.instance.startMesh();
+      } catch (_) {}
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const MainNavigationShell()),

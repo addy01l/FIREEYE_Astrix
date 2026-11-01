@@ -542,20 +542,18 @@ submitted = await SosService().createSos(
       return;
     }
 var meshQueued = false;
-    if (submitted['is_offline'] == true) {
-      try {
-        await MeshManager.instance.broadcastLocalSos(
-          latitude: _latitude,
-          longitude: _longitude,
-          emergencyType: _selectedEmergency,
-          notes: details.toString(),
-          peopleCount: _victimCount,
-          vulnerabilities: _vulnerabilities.toList(),
-          idempotencyKey: beaconId,
-        );
-        meshQueued = true;
-      } catch (_) {}
-    }
+    try {
+      await MeshManager.instance.broadcastLocalSos(
+        latitude: _latitude,
+        longitude: _longitude,
+        emergencyType: _selectedEmergency,
+        notes: details.toString(),
+        peopleCount: _victimCount,
+        vulnerabilities: _vulnerabilities.toList(),
+        idempotencyKey: beaconId,
+      );
+      meshQueued = true;
+    } catch (_) {}
     if (mounted) {
       setState(() {
         _submitting = false;
