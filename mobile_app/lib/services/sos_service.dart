@@ -1,8 +1,8 @@
 import 'dart:convert';
+import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../core/config/api_config.dart';
 import '../core/network/api_client.dart';
-import 'mesh/mesh_manager.dart';
 
 class SosService {
   final ApiClient _client = ApiClient.instance;
@@ -36,20 +36,17 @@ class SosService {
         return response.data as Map<String, dynamic>;
       }
       throw StateError('Backend returned an invalid SOS response');
-    } catch (e) {
-      // Offline fallback: save to persistent offline queue AND broadcast over BLE multi-hop mesh
+    } on DioException catch (e) {
+      final isNetworkFailure = e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.sendTimeout ||
+          e.type == DioExceptionType.receiveTimeout ||
+          e.type == DioExceptionType.connectionError ||
+          e.type == DioExceptionType.unknown;
+      final statusCode = e.response?.statusCode;
+      final isTemporaryServerFailure = statusCode == 408 || statusCode == 429 || (statusCode != null && statusCode >= 500);
+      if (!isNetworkFailure && !isTemporaryServerFailure && statusCode != null) rethrow;
+      // Queue only network outages and explicitly retryable server responses.
       await _queueOfflineSos(payload);
-
-      try {
-        await MeshManager.instance.broadcastLocalSos(
-          latitude: latitude,
-          longitude: longitude,
-          emergencyType: emergencyType,
-          notes: notes,
-          severity: severity,
-        );
-      } catch (_) {}
-
       return {
         'sos_code': idempotencyKey ?? 'SOS-OFFLINE',
         'status': 'QUEUED_OFFLINE',

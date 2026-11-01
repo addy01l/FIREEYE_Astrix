@@ -4,6 +4,7 @@ import '../constants/app_constants.dart';
 
 class SecureStorageService {
   static const _secureStorage = FlutterSecureStorage();
+  static const _refreshTokenKey = 'supabase_refresh_token';
 
   // Token storage
   static Future<void> saveToken(String token) async {
@@ -31,6 +32,10 @@ class SecureStorageService {
     final sp = await SharedPreferences.getInstance();
     await sp.remove(AppConstants.keyAuthToken);
   }
+
+  static Future<void> saveRefreshToken(String token) => _secureStorage.write(key: _refreshTokenKey, value: token);
+
+  static Future<String?> getRefreshToken() => _secureStorage.read(key: _refreshTokenKey);
 
   // Non-sensitive preferences
   static Future<void> saveUsername(String username) async {
@@ -65,6 +70,7 @@ class SecureStorageService {
 
   static Future<void> clearAll() async {
     await clearToken();
+    try { await _secureStorage.delete(key: _refreshTokenKey); } catch (_) {}
     final sp = await SharedPreferences.getInstance();
     await sp.remove(AppConstants.keyUserRole);
     await sp.remove(AppConstants.keyUsername);

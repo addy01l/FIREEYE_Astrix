@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
-import '../../core/network/api_client.dart';
+import '../../core/network/api_client.dart';import '../sos_service.dart';
 import 'ble_mesh_adapter.dart';
 import 'mesh_packet_model.dart';
 import 'mesh_storage_service.dart';
@@ -87,7 +87,7 @@ class MeshManager {
 
       // Start periodic internet synchronization timer (every 15 seconds)
       _syncTimer?.cancel();
-      _syncTimer = Timer.periodic(const Duration(seconds: 15), (_) => syncPendingPackets());
+      _syncTimer = Timer.periodic(const Duration(seconds: 15), (_) {        unawaited(syncPendingPackets());        unawaited(SosService().syncOfflineQueue());      });
 
       // If we have an active pending packet, immediately set it as GATT payload
       final pending = _storage.getPendingUploads();
@@ -119,7 +119,7 @@ class MeshManager {
     String severity = 'CRITICAL',
     int peopleCount = 1,
     List<String> vulnerabilities = const [],
-    String? householdId,
+    String? householdId,    String? idempotencyKey,
   }) async {
     await init();
 
@@ -131,7 +131,7 @@ class MeshManager {
       peopleCount: peopleCount,
       vulnerabilities: vulnerabilities,
       householdId: householdId,
-      notes: '$emergencyType | $notes',
+      notes: '$emergencyType | $notes',      customPacketId: idempotencyKey,
     );
 
     // 1. Persist locally in state PENDING

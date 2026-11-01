@@ -104,9 +104,8 @@ class BleMeshAdapter {
   }) async {
     initEventStream();
     if (!isAndroid) {
-      // Graceful simulated mode for tests/web/desktop
-      _eventStreamController.add({'type': 'MESH_STARTED', 'deviceId': deviceId});
-      return true;
+      _eventStreamController.add({'type': 'ERROR', 'message': 'BLE mesh transport is implemented for Android only.'});
+      return false;
     }
 
     try {

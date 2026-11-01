@@ -44,22 +44,6 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  void switchRole(UserRole role) {
-    if (_currentUser != null) {
-      _currentUser = UserModel(
-        id: _currentUser!.id,
-        username: _currentUser!.username,
-        fullName: _currentUser!.fullName,
-        email: _currentUser!.email,
-        role: role,
-        token: _currentUser!.token,
-        assignedStation: _currentUser!.assignedStation,
-        phone: _currentUser!.phone,
-      );
-      notifyListeners();
-    }
-  }
-
   Future<void> logout() async {
     await _authService.logout();
     _currentUser = null;

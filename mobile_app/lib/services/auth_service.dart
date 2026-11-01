@@ -1,3 +1,5 @@
+import 'package:dio/dio.dart';
+
 import '../core/config/api_config.dart';
 import '../core/network/api_client.dart';
 import '../core/storage/secure_storage_service.dart';
@@ -5,32 +7,31 @@ import '../models/user_model.dart';
 
 class AuthService {
   final ApiClient _client = ApiClient.instance;
+  final Dio _supabase = Dio();
 
   Future<UserModel> login(String username, String password) async {
-    final demoUser = _demoLogin(username, password);
-    if (demoUser != null) {
-      await SecureStorageService.saveToken(demoUser.token!);
-      await SecureStorageService.saveUsername(demoUser.username);
-      await SecureStorageService.saveUserRole(demoUser.role.name);
-      return demoUser;
-    }
-
-    final response = await _client.post(
-      ApiConfig.loginEndpoint,
-      data: {'username': username.trim(), 'password': password},
+    if (!ApiConfig.hasSupabaseConfig) throw StateError('Supabase is not configured. Set SUPABASE_URL and SUPABASE_ANON_KEY at build time.');
+    final response = await _supabase.post(
+      '${ApiConfig.supabaseUrl}/auth/v1/token?grant_type=password',
+      data: {'email': username.trim(), 'password': password},
+      options: Options(headers: {'apikey': ApiConfig.supabaseAnonKey}),
     );
     if (response.data is! Map<String, dynamic>) {
       throw StateError('Backend returned an invalid login response');
     }
 
-    final loginData = response.data as Map<String, dynamic>;
+    final loginData = Map<String, dynamic>.from(response.data as Map);
     final token = loginData['access_token'] as String?;
     if (token == null || token.isEmpty) {
       throw StateError('Backend login response did not contain an access token');
     }
     await SecureStorageService.saveToken(token);
-    await SecureStorageService.saveUsername(loginData['username'] as String? ?? username);
-    await SecureStorageService.saveUserRole((loginData['role'] as String? ?? 'CITIZEN').toLowerCase());
+    final refreshToken = loginData['refresh_token'] as String?;
+    if (refreshToken != null) await SecureStorageService.saveRefreshToken(refreshToken);
+    final authUser = Map<String, dynamic>.from(loginData['user'] as Map);
+    await SecureStorageService.saveUsername((authUser['email'] as String?) ?? username.trim());
+    final appMetadata = Map<String, dynamic>.from(authUser['app_metadata'] as Map? ?? const {});
+    await SecureStorageService.saveUserRole((appMetadata['role'] as String? ?? 'CITIZEN').toLowerCase());
 
     try {
       final profile = await _client.get(ApiConfig.meEndpoint);
@@ -40,8 +41,21 @@ class AuthService {
           'access_token': token,
         });
       }
-    } catch (_) {}
-    return UserModel.fromJson(loginData);
+    } catch (e) {
+      await SecureStorageService.clearAll();
+      throw StateError('The API could not validate the Supabase identity and role: $e');
+    }
+    await SecureStorageService.clearAll();
+    throw StateError('The API returned no profile for this Supabase account');
+  }
+
+  Future<void> register({required String email, required String password, required String fullName}) async {
+    if (!ApiConfig.hasSupabaseConfig) throw StateError('Supabase is not configured. Set SUPABASE_URL and SUPABASE_ANON_KEY at build time.');
+    await _supabase.post(
+      '${ApiConfig.supabaseUrl}/auth/v1/signup',
+      data: {'email': email.trim(), 'password': password, 'data': {'full_name': fullName}},
+      options: Options(headers: {'apikey': ApiConfig.supabaseAnonKey}),
+    );
   }
 
   Future<UserModel?> restoreSession() async {
@@ -49,12 +63,14 @@ class AuthService {
     final username = await SecureStorageService.getUsername();
     final role = await SecureStorageService.getUserRole();
     if (token == null || username == null || role == null) return null;
-    if (token == 'fire-eye-demo-token') {
-      return _buildDemoUser(username);
-    }
-
     try {
-      final response = await _client.get(ApiConfig.meEndpoint);
+      Response<dynamic> response;
+      try {
+        response = await _client.get(ApiConfig.meEndpoint);
+      } on DioException catch (e) {
+        if (e.response?.statusCode != 401 || !await _refreshSession()) rethrow;
+        response = await _client.get(ApiConfig.meEndpoint);
+      }
       if (response.data is Map<String, dynamic>) {
         return UserModel.fromJson({
           ...(response.data as Map<String, dynamic>),
@@ -67,33 +83,33 @@ class AuthService {
     return null;
   }
 
-  Future<void> logout() => SecureStorageService.clearAll();
-
-  UserModel? _demoLogin(String username, String password) {
-    if (password != 'tactical123') return null;
-    const demoUsers = {'commander', 'responder', 'volunteer', 'citizen'};
-    final normalizedUsername = username.trim().toLowerCase();
-    if (!demoUsers.contains(normalizedUsername)) return null;
-    return _buildDemoUser(normalizedUsername);
+  Future<bool> _refreshSession() async {
+    if (!ApiConfig.hasSupabaseConfig) return false;
+    final refreshToken = await SecureStorageService.getRefreshToken();
+    if (refreshToken == null) return false;
+    try {
+      final response = await _supabase.post(
+        '${ApiConfig.supabaseUrl}/auth/v1/token?grant_type=refresh_token',
+        data: {'refresh_token': refreshToken},
+        options: Options(headers: {'apikey': ApiConfig.supabaseAnonKey}),
+      );
+      final data = Map<String, dynamic>.from(response.data as Map);
+      await SecureStorageService.saveToken(data['access_token'] as String);
+      await SecureStorageService.saveRefreshToken(data['refresh_token'] as String);
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
-  UserModel _buildDemoUser(String username) {
-    final role = UserRole.fromString(username);
-    final station = switch (role) {
-      UserRole.commander => 'Central Command HQ',
-      UserRole.responder => 'Tactical Unit 04',
-      UserRole.volunteer => 'Relief Camp Beta',
-      UserRole.citizen => 'Civil Sector 7',
-    };
-    return UserModel(
-      id: 'DEMO-${role.name.toUpperCase()}',
-      username: username,
-      fullName: '${role.displayName} (Demo)',
-      email: '$username@fireeye.gov.in',
-      role: role,
-      token: 'fire-eye-demo-token',
-      assignedStation: station,
-      phone: '+91 98765 43210',
-    );
+  Future<void> logout() async {
+    final token = await SecureStorageService.getToken();
+    if (ApiConfig.hasSupabaseConfig && token != null) {
+      try {
+        await _supabase.post('${ApiConfig.supabaseUrl}/auth/v1/logout', options: Options(headers: {'apikey': ApiConfig.supabaseAnonKey, 'Authorization': 'Bearer $token'}));
+      } catch (_) {}
+    }
+    await SecureStorageService.clearAll();
   }
+
 }

@@ -30,8 +30,8 @@ def get_risk_zones(db: Session = Depends(get_db)):
 
 @router.get("/weather/live")
 def get_live_meteorological_telemetry(
-    latitude: float = 30.3165,
-    longitude: float = 78.0322,
+    latitude: float,
+    longitude: float,
 ):
     """Retrieve real-time live weather telemetry from Open-Meteo for any coordinates."""
     from app.services.weather_service import get_live_weather, get_live_elevation

@@ -30,14 +30,14 @@ class ShelterModel {
 
   factory ShelterModel.fromJson(Map<String, dynamic> json) {
     return ShelterModel(
-      id: json['id']?.toString() ?? 'SHL-${json['name'] ?? '01'}',
-      name: json['name'] as String? ?? 'Disaster Relief Shelter',
-      address: json['address'] as String? ?? 'Community Relief Center',
-      capacity: (json['capacity'] as num?)?.toInt() ?? 250,
-      occupancy: (json['occupancy'] as num?)?.toInt() ?? 100,
-      latitude: (json['latitude'] as num?)?.toDouble() ?? 30.3340,
-      longitude: (json['longitude'] as num?)?.toDouble() ?? 78.0550,
-      contactPhone: json['contact_phone'] as String? ?? '+91 94101 22334',
+      id: json['id']?.toString() ?? json['shelter_code']?.toString() ?? (throw const FormatException('Shelter ID missing')),
+      name: json['name'] as String? ?? (throw const FormatException('Shelter name missing')),
+      address: json['address'] as String? ?? json['facility_type'] as String? ?? '',
+      capacity: (json['capacity'] as num?)?.toInt() ?? (throw const FormatException('Shelter capacity missing')),
+      occupancy: (json['occupancy'] as num?)?.toInt() ?? (throw const FormatException('Shelter occupancy missing')),
+      latitude: (json['latitude'] as num?)?.toDouble() ?? (throw const FormatException('Shelter latitude missing')),
+      longitude: (json['longitude'] as num?)?.toDouble() ?? (throw const FormatException('Shelter longitude missing')),
+      contactPhone: json['contact_phone'] as String? ?? '',
       hasMedical: json['has_medical'] == true,
       hasGenerator: json['has_generator'] == true,
       status: json['status'] as String? ?? 'OPERATIONAL',

@@ -4,38 +4,6 @@ import '../models/incident_model.dart';
 
 class IncidentService {
   final ApiClient _client = ApiClient.instance;
-  static final List<IncidentModel> _localIncidents = [
-    IncidentModel(
-      id: 'INC-9481',
-      title: 'Chemical Storage Thermal Flare',
-      type: 'Industrial Fire',
-      severity: 'CRITICAL',
-      status: 'ACTIVE',
-      latitude: 30.3662,
-      longitude: 77.9221,
-      timestamp: DateTime.now().subtract(const Duration(minutes: 18)),
-      description: 'Intense thermal spike near solvent storage tanks. Priority Score: 92.0.',
-      locationName: 'Selaqui Industrial Corridor, Dehradun',
-      source: 'Thermal Sensor Network',
-      frp: 92.0,
-      brightness: 368.4,
-    ),
-    IncidentModel(
-      id: 'INC-8832',
-      title: 'Monsoon Slope Debris Slide',
-      type: 'Landslide',
-      severity: 'CRITICAL',
-      status: 'DISPATCHED',
-      latitude: 30.3842,
-      longitude: 78.0754,
-      timestamp: DateTime.now().subtract(const Duration(minutes: 45)),
-      description: 'Hill destabilization blocked arterial evacuation link. Priority Score: 85.0.',
-      locationName: 'Rajpur Road / Mussoorie Bypass',
-      source: 'Field Observer Report',
-      frp: 85.0,
-    ),
-  ];
-
   Future<List<IncidentModel>> getIncidents() async {
     final List<IncidentModel> combined = [];
 
@@ -112,20 +80,26 @@ class IncidentService {
       return combined;
     }
 
-    return _localIncidents;
+    return combined;
   }
 
   Future<bool> createIncident(IncidentModel incident) async {
     try {
-      final res = await _client.post(ApiConfig.incidentsEndpoint, data: incident.toJson());
+      final res = await _client.post(ApiConfig.sosEndpoint, data: {
+        'latitude': incident.latitude,
+        'longitude': incident.longitude,
+        'emergency_type': incident.type,
+        'severity': incident.severity,
+        'notes': '${incident.title}\n${incident.description}',
+        'sender_device_id': 'FIELD-OPERATOR',
+        'idempotency_key': incident.id,
+      });
       if (res.statusCode == 200 || res.statusCode == 201) {
-        _localIncidents.insert(0, incident);
         return true;
       }
     } catch (_) {}
 
-    _localIncidents.insert(0, incident);
-    return true;
+    return false;
   }
 
   Future<bool> updateIncidentStatus(String id, String newStatus) async {
@@ -135,19 +109,10 @@ class IncidentService {
         data: {'status': newStatus},
       );
       if (res.statusCode == 200) {
-        _updateLocalStatus(id, newStatus);
         return true;
       }
     } catch (_) {}
 
-    _updateLocalStatus(id, newStatus);
-    return true;
-  }
-
-  void _updateLocalStatus(String id, String newStatus) {
-    final idx = _localIncidents.indexWhere((i) => i.id == id);
-    if (idx != -1) {
-      _localIncidents[idx] = _localIncidents[idx].copyWith(status: newStatus);
-    }
+    return false;
   }
 }

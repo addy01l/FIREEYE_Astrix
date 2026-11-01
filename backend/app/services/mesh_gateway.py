@@ -79,8 +79,12 @@ def process_mesh_packet(db: Session, packet: MeshPacket) -> dict[str, Any]:
     associated_sos_code = None
     if packet.type == "SOS":
         # Check if active SOS already exists for this household to avoid dups
-        existing_sos = None
-        if packet.household_id:
+        existing_sos = (
+            db.query(SOSRequest)
+            .filter(SOSRequest.idempotency_key == packet.message_id)
+            .first()
+        )
+        if not existing_sos and packet.household_id:
             existing_sos = (
                 db.query(SOSRequest)
                 .filter(
@@ -117,6 +121,7 @@ def process_mesh_packet(db: Session, packet: MeshPacket) -> dict[str, Any]:
 
             new_sos = SOSRequest(
                 sos_code=sos_code,
+                idempotency_key=packet.message_id,
                 household_code=packet.household_id,
                 sender_device_id=packet.sender_id,
                 latitude=packet.latitude,

@@ -21,4 +21,12 @@ services:
         sync: false
       - key: ML_MODEL_PATH
         value: ml/models/risk_model.joblib
+      - key: SUPABASE_URL
+        value: https://xwiwmwgyayqyhkfiinnv.supabase.co
+      - key: SUPABASE_JWT_SECRET
+        sync: false
+      - key: CORS_ALLOW_ORIGINS
+        value: "*"
+      - key: SEED_DEMO_DATA
+        value: "false"
 

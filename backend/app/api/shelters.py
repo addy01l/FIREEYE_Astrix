@@ -42,7 +42,7 @@ def get_shelter(shelter_code: str, db: Session = Depends(get_db)):
 def update_shelter_occupancy(
     shelter_code: str,
     update_in: ShelterOccupancyUpdate,
-    current_user: Optional[User] = Depends(get_optional_user),
+    current_user: User = Depends(require_roles([UserRole.RESCUE, UserRole.ADMIN])),
     db: Session = Depends(get_db),
 ):
     """Update shelter occupancy, operational status, or safety condition."""

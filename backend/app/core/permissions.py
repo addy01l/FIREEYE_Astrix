@@ -40,17 +40,46 @@ def get_current_user(
     try:
         payload = decode_token(token)
         username: str | None = payload.get("sub")
-        token_type: str | None = payload.get("type")
-        if username is None or token_type != "access":
+        if username is None or payload.get("type") != "access":
             raise credentials_exception
+        user = db.query(User).filter(User.username == username).first()
+        if user is None:
+            raise credentials_exception
+        return user
+    except jwt.PyJWTError:
+        pass
+
+    # Supabase access tokens are accepted only when the backend JWT secret is
+    # configured. Privileged roles come exclusively from trusted app_metadata.
+    if not settings.SUPABASE_JWT_SECRET:
+        raise credentials_exception
+    try:
+        options = {"require": ["sub", "exp", "aud"]}
+        decode_args = {"audience": "authenticated", "algorithms": ["HS256"], "options": options}
+        if settings.SUPABASE_URL:
+            decode_args["issuer"] = f"{settings.SUPABASE_URL.rstrip('/')}/auth/v1"
+        payload = jwt.decode(token, settings.SUPABASE_JWT_SECRET, **decode_args)
+        auth_id = payload.get("sub")
+        email = payload.get("email")
+        if not auth_id or not email:
+            raise credentials_exception
+        app_metadata = payload.get("app_metadata") or {}
+        claimed_role = str(app_metadata.get("role", "CITIZEN")).upper()
+        role_map = {"RESCUER": "RESCUE", "RESCUE": "RESCUE", "COMMAND_CENTER": "ADMIN", "ADMIN": "ADMIN", "CITIZEN": "CITIZEN"}
+        role = role_map.get(claimed_role, "CITIZEN")
+        username = f"sb_{str(auth_id).replace('-', '')[:40]}"
+        user = db.query(User).filter(User.email == email).first()
+        if user is None:
+            user = User(username=username, email=email, hashed_password="SUPABASE_AUTH", role=role, full_name=(payload.get("user_metadata") or {}).get("full_name"), is_active=True)
+            db.add(user)
+        else:
+            user.role = role
+            user.is_active = True
+        db.commit()
+        db.refresh(user)
+        return user
     except jwt.PyJWTError:
         raise credentials_exception
-
-    user = db.query(User).filter(User.username == username).first()
-    if user is None:
-        raise credentials_exception
-
-    return user
 
 
 def get_current_active_user(
@@ -73,13 +102,9 @@ def get_optional_user(
     if not token:
         return None
     try:
-        payload = decode_token(token)
-        username: str | None = payload.get("sub")
-        if username:
-            return db.query(User).filter(User.username == username).first()
-    except Exception:
-        pass
-    return None
+        return get_current_user(token=token, db=db)
+    except HTTPException:
+        return None
 
 
 def require_roles(allowed_roles: list[str | UserRole]) -> Callable:

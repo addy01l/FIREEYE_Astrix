@@ -199,9 +199,7 @@ def generate_safe_evacuation_route(
         dest_lng = target_shelter.longitude
         destination_name = target_shelter.name
     elif dest_lat is None or dest_lng is None:
-        dest_lat = origin_lat - 0.02
-        dest_lng = origin_lng + 0.03
-        destination_name = "Civil Defense Base Camp"
+        raise ValueError("No operational shelter with capacity is registered")
 
     # High Risk Zones to avoid
     high_risk_zones = db.query(RiskZone).filter(RiskZone.risk_level == "HIGH").all()
@@ -297,8 +295,9 @@ def generate_safe_evacuation_route(
                 "duration_minutes": osrm_res["duration_minutes"],
                 "hazard_status": hazard_status,
                 "bypassed_hazard_zones": bypassed_zones,
-                "is_verified_safe": True,
-                "routing_status": "CONFIRMED_ROAD_ROUTE",
+                "is_verified_safe": False,
+                "routing_status": "ROAD_ROUTE_HAZARD_AVOIDANCE_UNVERIFIED",
+                "warning": "Road geometry and ETA came from OSRM. Hazard avoidance could not be verified by the configured routing provider.",
                 "path": osrm_res["path"],
                 "steps": osrm_res["steps"],
             }

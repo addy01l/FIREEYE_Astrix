@@ -5,61 +5,6 @@ import '../models/shelter_model.dart';
 class ShelterService {
   final ApiClient _client = ApiClient.instance;
 
-  static final List<ShelterModel> _fallbackShelters = [
-    ShelterModel(
-      id: 'SHL-01',
-      name: 'Doon Central Relief Center',
-      address: 'Sector 4, Rajpur Road, Dehradun',
-      capacity: 500,
-      occupancy: 210,
-      latitude: 30.3340,
-      longitude: 78.0550,
-      contactPhone: '+91 94101 22334',
-      hasMedical: true,
-      hasGenerator: true,
-      status: 'OPERATIONAL',
-    ),
-    ShelterModel(
-      id: 'SHL-02',
-      name: 'Selaqui Government Secondary Camp',
-      address: 'Main Industrial Bypass, Selaqui',
-      capacity: 350,
-      occupancy: 140,
-      latitude: 30.3700,
-      longitude: 77.9300,
-      contactPhone: '+91 98370 66551',
-      hasMedical: false,
-      hasGenerator: true,
-      status: 'OPERATIONAL',
-    ),
-    ShelterModel(
-      id: 'SHL-03',
-      name: 'Clement Town Community Auditorium',
-      address: 'Post Office Road, Clement Town',
-      capacity: 400,
-      occupancy: 375,
-      latitude: 30.2680,
-      longitude: 78.0080,
-      contactPhone: '+91 97601 44332',
-      hasMedical: true,
-      hasGenerator: false,
-      status: 'NEAR CAPACITY',
-    ),
-    ShelterModel(
-      id: 'SHL-04',
-      name: 'Premnagar Regional Sports Stadium',
-      address: 'Chakrata Road, Dehradun',
-      capacity: 650,
-      occupancy: 85,
-      latitude: 30.3390,
-      longitude: 77.9620,
-      contactPhone: '+91 94111 99001',
-      hasMedical: true,
-      hasGenerator: true,
-      status: 'OPERATIONAL',
-    ),
-  ];
-
   Future<List<ShelterModel>> getShelters() async {
     try {
       final res = await _client.get(ApiConfig.sheltersEndpoint);
@@ -84,8 +29,8 @@ class ShelterService {
             .toList();
       }
     } catch (_) {
-      // Backend does not expose shelters endpoint yet
+      rethrow;
     }
-    return _fallbackShelters;
+    throw StateError('Shelter service returned an invalid response');
   }
 }

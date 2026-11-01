@@ -31,6 +31,7 @@ class HouseholdCreate(BaseModel):
 def get_households(
     zone_id: Optional[str] = None,
     min_vulnerability: float = 0.0,
+    current_user: User = Depends(require_roles([UserRole.RESCUE, UserRole.ADMIN])),
     db: Session = Depends(get_db),
 ):
     """Retrieve list of registered vulnerable households, with optional zone and vulnerability filters."""
@@ -43,7 +44,11 @@ def get_households(
 
 
 @router.get("/{household_code}", response_model=HouseholdResponse)
-def get_household_by_code(household_code: str, db: Session = Depends(get_db)):
+def get_household_by_code(
+    household_code: str,
+    current_user: User = Depends(require_roles([UserRole.RESCUE, UserRole.ADMIN])),
+    db: Session = Depends(get_db),
+):
     """Retrieve details for a single household by its code."""
     hh = (
         db.query(Household)
@@ -58,7 +63,7 @@ def get_household_by_code(household_code: str, db: Session = Depends(get_db)):
 @router.post("/", response_model=HouseholdResponse, status_code=status.HTTP_201_CREATED)
 def create_household(
     hh_in: HouseholdCreate,
-    current_user: Optional[User] = Depends(get_optional_user),
+    current_user: User = Depends(require_roles([UserRole.RESCUE, UserRole.ADMIN])),
     db: Session = Depends(get_db),
 ):
     """Register a new household record with computed vulnerability scoring."""

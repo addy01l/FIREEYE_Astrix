@@ -5,7 +5,6 @@ import '../../core/config/api_config.dart';
 import '../../core/network/api_client.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_theme.dart';
-import '../../models/user_model.dart';
 import '../../providers/anomaly_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/incident_provider.dart';
@@ -302,49 +301,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
             const SizedBox(height: 20),
 
-            // Role Switcher
-            Text(
-              'TACTICAL ROLE SIMULATION',
-              style: AppTheme.mono.copyWith(
-                fontSize: 11,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 1.2,
-                color: isDark ? AppColors.textMuted : AppColors.textSubtle,
-              ),
-            ),
-            const SizedBox(height: 8),
-
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: isDark ? AppColors.darkCharcoal : AppColors.lightCard,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Simulate different tactical roles to preview permission-gated controls:',
-                    style: AppTheme.sans.copyWith(fontSize: 12, color: isDark ? AppColors.textMuted : AppColors.textSubtle),
-                  ),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      _buildRoleButton(context, authProvider, UserRole.commander, 'COMMANDER', LucideIcons.shield),
-                      _buildRoleButton(context, authProvider, UserRole.responder, 'RESPONDER', LucideIcons.truck),
-                      _buildRoleButton(context, authProvider, UserRole.volunteer, 'VOLUNTEER', LucideIcons.heartHandshake),
-                      _buildRoleButton(context, authProvider, UserRole.citizen, 'CITIZEN', LucideIcons.user),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 20),
-
             // Diagnostics and Counts
             Text(
               'TELEMETRY & CACHED DATA',
@@ -418,33 +374,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildRoleButton(
-    BuildContext context,
-    AuthProvider provider,
-    UserRole role,
-    String label,
-    IconData icon,
-  ) {
-    final isCurrent = provider.currentRole == role;
-    return ChoiceChip(
-      avatar: Icon(icon, size: 14, color: isCurrent ? Colors.white : AppColors.textMuted),
-      label: Text(label, style: AppTheme.mono.copyWith(fontSize: 11, fontWeight: FontWeight.w700)),
-      selected: isCurrent,
-      onSelected: (_) {
-        provider.switchRole(role);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Switched tactical role to ${role.displayName}'),
-            duration: const Duration(seconds: 1),
-          ),
-        );
-      },
-      selectedColor: AppColors.emergencyRed,
-      backgroundColor: Colors.transparent,
-      side: BorderSide(color: isCurrent ? AppColors.emergencyRed : Colors.grey.withOpacity(0.3)),
     );
   }
 

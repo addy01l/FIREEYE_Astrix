@@ -19,8 +19,8 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
-  final _usernameController = TextEditingController(text: 'commander');
-  final _passwordController = TextEditingController(text: 'tactical123');
+  final _usernameController = TextEditingController();
+  final _passwordController = TextEditingController();
   bool _obscurePassword = true;
   bool _showOfficerSection = true;
 
@@ -116,14 +116,6 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
         MaterialPageRoute(builder: (_) => const MainNavigationShell()),
       );
     }
-  }
-
-  void _setPreset(String user, String pass) {
-    setState(() {
-      _usernameController.text = user;
-      _passwordController.text = pass;
-      _showOfficerSection = true;
-    });
   }
 
   @override
@@ -476,10 +468,10 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     final shelters = shelterProvider?.shelters ?? [];
     final nearest = shelters.isNotEmpty ? shelters.first : null;
 
-    final name = nearest?.name ?? 'Govt Relief Center';
-    final distance = nearest != null ? '${(nearest.latitude.abs() % 4 + 1.2).toStringAsFixed(1)} km away' : '2.8 km away';
-    final capacity = nearest?.capacity ?? 120;
-    final available = nearest?.availableBeds ?? 64;
+    final name = nearest?.name ?? 'Shelter data unavailable';
+    final distance = 'Distance requires a live GPS route';
+    final capacity = nearest?.capacity;
+    final available = nearest?.availableBeds;
 
     return Container(
       padding: const EdgeInsets.all(22),
@@ -535,7 +527,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                     children: [
                       Text('Capacity', style: AppTheme.sans.copyWith(fontSize: 11, color: AppColors.textMuted)),
                       const SizedBox(height: 4),
-                      Text('$capacity', style: AppTheme.mono.copyWith(fontSize: 18, fontWeight: FontWeight.w900, color: AppColors.textLight)),
+                      Text(capacity?.toString() ?? '—', style: AppTheme.mono.copyWith(fontSize: 18, fontWeight: FontWeight.w900, color: AppColors.textLight)),
                     ],
                   ),
                 ),
@@ -555,7 +547,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                       Text('Available', style: AppTheme.sans.copyWith(fontSize: 11, color: AppColors.textMuted)),
                       const SizedBox(height: 4),
                       Text(
-                        '$available',
+                        available?.toString() ?? '—',
                         style: AppTheme.mono.copyWith(
                           fontSize: 18,
                           fontWeight: FontWeight.w900,
@@ -651,29 +643,14 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Demo Account Presets
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: [
-                          _buildPresetChip('Commander', 'commander', 'tactical123'),
-                          const SizedBox(width: 8),
-                          _buildPresetChip('Responder', 'responder1', 'tactical123'),
-                          const SizedBox(width: 8),
-                          _buildPresetChip('Volunteer', 'volunteer1', 'tactical123'),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
                     TextFormField(
                       controller: _usernameController,
                       style: AppTheme.mono.copyWith(fontSize: 13),
                       decoration: const InputDecoration(
-                        labelText: 'Official Username / Call-Sign',
+                        labelText: 'Supabase account email',
                         prefixIcon: Icon(LucideIcons.user, size: 16),
                       ),
-                      validator: (val) => val == null || val.trim().isEmpty ? 'Enter callsign' : null,
+                      validator: (val) => val == null || !val.contains('@') ? 'Enter your account email' : null,
                     ),
                     const SizedBox(height: 12),
 
@@ -734,23 +711,4 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     );
   }
 
-  Widget _buildPresetChip(String label, String user, String pass) {
-    final active = _usernameController.text == user;
-    return InkWell(
-      onTap: () => _setPreset(user, pass),
-      borderRadius: BorderRadius.circular(6),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          color: active ? AppColors.infoCyan.withOpacity(0.18) : const Color(0xFF0B0D11),
-          borderRadius: BorderRadius.circular(6),
-          border: Border.all(color: active ? AppColors.infoCyan : const Color(0xFF232733)),
-        ),
-        child: Text(
-          label,
-          style: AppTheme.mono.copyWith(fontSize: 10, fontWeight: FontWeight.w700, color: active ? AppColors.infoCyan : AppColors.textMuted),
-        ),
-      ),
-    );
-  }
 }

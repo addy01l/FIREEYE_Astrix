@@ -22,15 +22,18 @@ def get_safe_route(route_req: RouteRequest, db: Session = Depends(get_db)):
     Generate an evacuation road route avoiding high-risk hazard zones.
     If the routing service is unavailable, provides an explicit degraded fallback.
     """
-    return generate_safe_evacuation_route(
-        db=db,
-        origin_lat=route_req.origin.lat,
-        origin_lng=route_req.origin.lng,
-        dest_lat=route_req.destination.lat if route_req.destination else None,
-        dest_lng=route_req.destination.lng if route_req.destination else None,
-        target_shelter_code=route_req.target_shelter_code,
-        avoid_high_risk=route_req.avoid_high_risk,
-    )
+    try:
+        return generate_safe_evacuation_route(
+            db=db,
+            origin_lat=route_req.origin.lat,
+            origin_lng=route_req.origin.lng,
+            dest_lat=route_req.destination.lat if route_req.destination else None,
+            dest_lng=route_req.destination.lng if route_req.destination else None,
+            target_shelter_code=route_req.target_shelter_code,
+            avoid_high_risk=route_req.avoid_high_risk,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
 
 
 @router.post("/network-route", response_model=NetworkRouteResponse)

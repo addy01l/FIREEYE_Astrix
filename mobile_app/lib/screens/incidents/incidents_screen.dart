@@ -10,7 +10,7 @@ import '../../widgets/error_state_view.dart';
 import '../../widgets/loading_view.dart';
 import '../../widgets/status_chip.dart';
 import 'create_incident_screen.dart';
-import 'incident_detail_screen.dart';
+import '../map/rescue_route_screen.dart';
 
 class IncidentsScreen extends StatefulWidget {
   const IncidentsScreen({super.key});
@@ -158,10 +158,9 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
                                   margin: const EdgeInsets.only(bottom: 12),
                                   child: InkWell(
                                     onTap: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(builder: (_) => IncidentDetailScreen(incident: inc)),
-                                      );
+                                      Navigator.push(context, MaterialPageRoute(
+                                        builder: (_) => RescueRouteScreen(incident: inc),
+                                      ));
                                     },
                                     borderRadius: BorderRadius.circular(10),
                                     child: Container(

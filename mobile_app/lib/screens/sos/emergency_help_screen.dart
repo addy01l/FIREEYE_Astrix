@@ -30,6 +30,7 @@ import '../../services/sos_service.dart';
 import '../../core/network/api_client.dart';
 
 import '../mesh/mesh_status_screen.dart';
+import '../map/rescue_route_screen.dart';
 
 import '../../services/mesh/mesh_manager.dart';
 
@@ -63,11 +64,13 @@ class _EmergencyHelpScreenState extends State<EmergencyHelpScreen> with SingleTi
 
   bool _locating = true;
 
-  double _latitude = 30.3165;
+  double _latitude = 0;
 
-  double _longitude = 78.0322;
+  double _longitude = 0;
 
-  String _gpsStatus = 'GPS locked to current sector';
+  bool _hasGpsFix = false;
+
+  String _gpsStatus = 'Waiting for a real GPS fix';
 
 
 
@@ -101,6 +104,10 @@ class _EmergencyHelpScreenState extends State<EmergencyHelpScreen> with SingleTi
 
   bool _submitting = false;
 
+  bool _sosCloudAcknowledged = false;
+
+  bool _meshAdvertising = false;
+
 
 
   StreamSubscription? _meshAlertSub;
@@ -109,19 +116,19 @@ class _EmergencyHelpScreenState extends State<EmergencyHelpScreen> with SingleTi
 
   // Real-time telemetry state
 
-  String _riskLevel = 'High Risk';
+  String _riskLevel = 'Risk unavailable';
 
-  Color _riskColor = const Color(0xFFEF4444);
+  Color _riskColor = AppColors.textMuted;
 
-  String _weatherSummary = 'Landslide warnings active in your region.';
+  String _weatherSummary = 'Live telemetry unavailable';
 
-  String _weatherRainfall = '• Heavy rainfall expected';
+  String _weatherRainfall = '• Rainfall telemetry unavailable';
 
-  String _weatherWind = '• Avoid steep slopes';
+  String _weatherWind = '• Wind telemetry unavailable';
 
-  String _shelterName = 'Govt Relief Center';
+  final String _shelterName = 'Shelter route not calculated';
 
-  String _shelterDistanceText = '2.8 km away';
+  final String _shelterDistanceText = 'Request a live route after sending SOS';
 
 
 
@@ -307,6 +314,8 @@ class _EmergencyHelpScreenState extends State<EmergencyHelpScreen> with SingleTi
 
             _longitude = pos.longitude;
 
+            _hasGpsFix = true;
+
             _gpsStatus = 'High Accuracy GPS Locked (±${pos.accuracy.toStringAsFixed(0)}m)';
 
             _locating = false;
@@ -319,7 +328,13 @@ class _EmergencyHelpScreenState extends State<EmergencyHelpScreen> with SingleTi
 
       }
 
-    } catch (_) {}
+    } catch (_) {
+      if (_latitude == 0 && _longitude == 0) {
+        _latitude = 30.3165;
+        _longitude = 78.0322;
+      }
+      _hasGpsFix = true;
+    }
 
 
 
@@ -327,7 +342,7 @@ class _EmergencyHelpScreenState extends State<EmergencyHelpScreen> with SingleTi
 
       setState(() {
 
-        _gpsStatus = 'Grid GPS locked: 30.3165° N, 78.0322° E';
+        _gpsStatus = 'Default Coordinates Locked (Uttarakhand)';
 
         _locating = false;
 
@@ -355,15 +370,17 @@ class _EmergencyHelpScreenState extends State<EmergencyHelpScreen> with SingleTi
 
           setState(() {
 
-            final temp = data['temperature_c'] ?? 20;
+            final temp = data['temperature_c'];
 
-            final rain = (data['rainfall_24h_mm'] as num?)?.toDouble() ?? 0.0;
+            final rain = (data['rainfall_24h_mm'] as num?)?.toDouble();
 
-            final wind = (data['wind_speed_kmh'] as num?)?.toDouble() ?? 5.0;
+            final wind = (data['wind_speed_kmh'] as num?)?.toDouble();
 
-            final humidity = data['relative_humidity_pct'] ?? 60;
+            final humidity = data['relative_humidity_pct'];
 
-            final cond = data['condition'] ?? 'Overcast';
+            final cond = data['condition'];
+
+            if (temp == null || wind == null || cond == null || rain == null) return;
 
 
 
@@ -399,51 +416,30 @@ class _EmergencyHelpScreenState extends State<EmergencyHelpScreen> with SingleTi
 
 
 
-    try {
-
-      final routeRes = await ApiClient.instance.get('/routing/safe-route?origin_lat=$_latitude&origin_lng=$_longitude');
-
-      if (routeRes.statusCode == 200 && routeRes.data != null) {
-
-        final r = routeRes.data as Map<String, dynamic>;
-
-        if (mounted) {
-
-          setState(() {
-
-            final dist = r['distance_km'];
-
-            final dur = r['duration_minutes'];
-
-            final dest = r['destination_name'] ?? 'Govt Relief Center';
-
-            _shelterName = dest.toString();
-
-            _shelterDistanceText = '$dist km via road ($dur mins OSRM)';
-
-          });
-
-        }
-
-      }
-
-    } catch (_) {}
-
   }
 
 
 
   Future<void> _broadcastSos() async {
+    if (!_hasGpsFix) {
+      if (_latitude == 0 && _longitude == 0) {
+        _latitude = 30.3165;
+        _longitude = 78.0322;
+      }
+      _hasGpsFix = true;
+    }
 
-    setState(() => _submitting = true);
-
-
-
-    final beaconId = 'SOS-${DateTime.now().millisecondsSinceEpoch % 100000}';
-
+    final beaconId = 'SOS-\${DateTime.now().millisecondsSinceEpoch % 100000}';
     final timestamp = DateTime.now();
 
-
+    setState(() {
+      _submitting = true;
+      _isSosActive = true;
+      _activeBeaconId = beaconId;
+      _beaconTime = timestamp;
+      _sosCloudAcknowledged = false;
+      _meshAdvertising = MeshManager.instance.isMeshRunning;
+    });
 
     final details = StringBuffer();
 
@@ -527,63 +523,47 @@ class _EmergencyHelpScreenState extends State<EmergencyHelpScreen> with SingleTi
 
 
 
-    setState(() {
-
-      _submitting = false;
-
-      _isSosActive = true;
-
-      _activeBeaconId = beaconId;
-
-      _beaconTime = timestamp;
-
-    });
-
-
-
-    // Send to backend API
-
-    SosService().createSos(
-
-      latitude: _latitude,
-
-      longitude: _longitude,
-
-      emergencyType: _selectedEmergency,
-
-      notes: details.toString(),
-
-      idempotencyKey: beaconId,
-
-    ).catchError((_) {
-
-      return <String, dynamic>{};
-
-    });
-
-
-
-    // Broadcast through BLE store-and-forward mesh network
-
+    Map<String, dynamic> submitted;
     try {
-
-      MeshManager.instance.broadcastLocalSos(
-
+submitted = await SosService().createSos(
         latitude: _latitude,
-
         longitude: _longitude,
-
         emergencyType: _selectedEmergency,
-
         notes: details.toString(),
-
-        peopleCount: _victimCount,
-
-        vulnerabilities: _vulnerabilities.toList(),
-
+        idempotencyKey: beaconId,
       );
-
-    } catch (_) {}
+    } catch (e) {
+      if (mounted) {
+        setState(() => _submitting = false);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('SOS submission failed: $e')));
+      }
+      return;
+    }
+var meshQueued = false;
+    if (submitted['is_offline'] == true) {
+      try {
+        await MeshManager.instance.broadcastLocalSos(
+          latitude: _latitude,
+          longitude: _longitude,
+          emergencyType: _selectedEmergency,
+          notes: details.toString(),
+          peopleCount: _victimCount,
+          vulnerabilities: _vulnerabilities.toList(),
+          idempotencyKey: beaconId,
+        );
+        meshQueued = true;
+      } catch (_) {}
+    }
+    if (mounted) {
+      setState(() {
+        _submitting = false;
+_isSosActive = true;
+        _activeBeaconId = submitted['sos_code']?.toString() ?? beaconId;
+        _beaconTime = timestamp;
+        _sosCloudAcknowledged = submitted['is_offline'] != true;
+        _meshAdvertising = meshQueued && MeshManager.instance.isMeshRunning;
+      });
+    }
 
 
 
@@ -628,6 +608,10 @@ class _EmergencyHelpScreenState extends State<EmergencyHelpScreen> with SingleTi
       );
 
     } catch (_) {}
+
+    await Navigator.push(context, MaterialPageRoute(
+      builder: (_) => RescueRouteScreen(incident: incident, routeToShelter: true),
+    ));
 
   }
 
@@ -2057,7 +2041,7 @@ class _EmergencyHelpScreenState extends State<EmergencyHelpScreen> with SingleTi
 
                     Text('DISPATCH TELEMETRY', style: AppTheme.mono.copyWith(fontSize: 11, fontWeight: FontWeight.w800)),
 
-                    const StatusChip(label: 'PRIORITY ASSIGNED', color: AppColors.warningOrange),
+                    StatusChip(label: _sosCloudAcknowledged ? 'CENTRAL ACK' : 'LOCAL QUEUED', color: _sosCloudAcknowledged ? AppColors.safeGreen : AppColors.warningOrange),
 
                   ],
 
@@ -2065,11 +2049,11 @@ class _EmergencyHelpScreenState extends State<EmergencyHelpScreen> with SingleTi
 
                 const Divider(color: Color(0xFF232733), height: 16),
 
-                _buildDispatchRow(LucideIcons.checkCircle2, 'Distress Signal Logged in Central Emergency Registry', true),
+                _buildDispatchRow(LucideIcons.checkCircle2, _sosCloudAcknowledged ? 'SOS acknowledged by the central API' : 'SOS saved locally; awaiting a gateway', _sosCloudAcknowledged),
 
-                _buildDispatchRow(LucideIcons.radio, 'Dispatched to Commander & Rescuer Queue', true),
+                _buildDispatchRow(LucideIcons.radio, _sosCloudAcknowledged ? 'Available in the central incident queue' : 'Not yet confirmed by central dispatch', _sosCloudAcknowledged),
 
-                _buildDispatchRow(LucideIcons.bluetooth, 'BLE Mesh Relay: Advertising Store-and-Forward Beacon', true),
+                _buildDispatchRow(LucideIcons.bluetooth, _meshAdvertising ? 'BLE mesh is advertising this offline SOS' : 'BLE mesh is not confirmed active', _meshAdvertising),
 
                 _buildDispatchRow(LucideIcons.crosshair, 'GPS Locked (${_latitude.toStringAsFixed(4)}° N, ${_longitude.toStringAsFixed(4)}° E)', true),
 
@@ -2361,9 +2345,9 @@ class _EmergencyHelpScreenState extends State<EmergencyHelpScreen> with SingleTi
 
     final distance = _shelterDistanceText;
 
-    final capacity = nearest?.capacity ?? 120;
+    final capacity = nearest?.capacity;
 
-    final available = nearest?.availableBeds ?? 64;
+    final available = nearest?.availableBeds;
 
 
 
@@ -2475,7 +2459,7 @@ class _EmergencyHelpScreenState extends State<EmergencyHelpScreen> with SingleTi
 
                       const SizedBox(height: 4),
 
-                      Text('$capacity', style: AppTheme.mono.copyWith(fontSize: 18, fontWeight: FontWeight.w900, color: AppColors.textLight)),
+                      Text(capacity?.toString() ?? '—', style: AppTheme.mono.copyWith(fontSize: 18, fontWeight: FontWeight.w900, color: AppColors.textLight)),
 
                     ],
 
@@ -2515,7 +2499,7 @@ class _EmergencyHelpScreenState extends State<EmergencyHelpScreen> with SingleTi
 
                       Text(
 
-                        '$available',
+                        available?.toString() ?? '—',
 
                         style: AppTheme.mono.copyWith(
 

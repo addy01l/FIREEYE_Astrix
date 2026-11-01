@@ -19,8 +19,8 @@ class _CreateIncidentScreenState extends State<CreateIncidentScreen> {
   final _titleController = TextEditingController();
   final _locationController = TextEditingController();
   final _descController = TextEditingController();
-  final _latController = TextEditingController(text: '30.3165');
-  final _lngController = TextEditingController(text: '78.0322');
+  final _latController = TextEditingController();
+  final _lngController = TextEditingController();
 
   String _type = 'Industrial Fire';
   String _severity = 'CRITICAL';
@@ -59,6 +59,12 @@ class _CreateIncidentScreenState extends State<CreateIncidentScreen> {
 
   Future<void> _submitIncident() async {
     if (!_formKey.currentState!.validate()) return;
+    final latitude = double.tryParse(_latController.text);
+    final longitude = double.tryParse(_lngController.text);
+    if (latitude == null || longitude == null || latitude.abs() > 90 || longitude.abs() > 180) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Provide valid GPS coordinates or capture your current location.')));
+      return;
+    }
     setState(() => _submitting = true);
 
     final inc = IncidentModel(
@@ -67,8 +73,8 @@ class _CreateIncidentScreenState extends State<CreateIncidentScreen> {
       type: _type,
       severity: _severity,
       status: 'ACTIVE',
-      latitude: double.tryParse(_latController.text) ?? 30.3165,
-      longitude: double.tryParse(_lngController.text) ?? 78.0322,
+      latitude: latitude,
+      longitude: longitude,
       timestamp: DateTime.now(),
       description: _descController.text.trim(),
       locationName: _locationController.text.trim(),

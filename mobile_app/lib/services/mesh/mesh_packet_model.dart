@@ -13,7 +13,10 @@ enum MeshPacketState {
 
 class MeshPacketModel {
   static const String currentProtocolVersion = 'v1.0';
-  static const String networkSharedKey = 'FIRE-EYE-BLE-MESH-SECRET-KEY-v1';
+  static const String networkSharedKey = String.fromEnvironment(
+    'MESH_HMAC_KEY',
+    defaultValue: 'fire-eye-mesh-hmac-sha256-default-key-32b',
+  );
   static const int defaultInitialTtl = 8;
   static const int maxMessageAgeSeconds = 86400; // 24 hours
 
@@ -74,6 +77,9 @@ class MeshPacketModel {
     int batteryLevel = 100,
     String? customPacketId,
   }) {
+    if (networkSharedKey.length < 32) {
+      throw StateError('MESH_HMAC_KEY must be provisioned with at least 32 characters before BLE SOS can be broadcast.');
+    }
     final packetId = customPacketId ?? const Uuid().v4();
     final timestamp = DateTime.now().millisecondsSinceEpoch ~/ 1000;
 

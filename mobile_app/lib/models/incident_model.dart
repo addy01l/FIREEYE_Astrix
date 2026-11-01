@@ -32,20 +32,26 @@ class IncidentModel {
   });
 
   factory IncidentModel.fromJson(Map<String, dynamic> json) {
+    final latitude = json['latitude'] as num?;
+    final longitude = json['longitude'] as num?;
+    final timestamp = DateTime.tryParse(
+      (json['timestamp'] ?? json['reported_at'] ?? json['created_at'])?.toString() ?? '',
+    );
+    if (json['id'] == null || latitude == null || longitude == null || timestamp == null) {
+      throw const FormatException('Incident record is missing its ID, coordinates, or timestamp');
+    }
     return IncidentModel(
-      id: json['id']?.toString() ?? 'INC-${DateTime.now().millisecondsSinceEpoch}',
-      title: json['title'] as String? ?? 'Thermal Anomaly Detection',
-      type: json['type'] as String? ?? 'Industrial Fire',
-      severity: (json['severity'] as String? ?? 'CRITICAL').toUpperCase(),
-      status: (json['status'] as String? ?? 'ACTIVE').toUpperCase(),
-      latitude: (json['latitude'] as num?)?.toDouble() ?? 30.3165,
-      longitude: (json['longitude'] as num?)?.toDouble() ?? 78.0322,
-      timestamp: json['timestamp'] != null
-          ? DateTime.tryParse(json['timestamp'].toString()) ?? DateTime.now()
-          : DateTime.now(),
-      description: json['description'] as String? ?? 'Thermal hotspot detected by satellite telemetry.',
-      locationName: json['location_name'] as String? ?? 'Sector Grid Alpha',
-      source: json['source'] as String? ?? 'NASA FIRMS VIIRS',
+      id: json['id'].toString(),
+      title: json['title'] as String? ?? '',
+      type: json['type'] as String? ?? '',
+      severity: (json['severity'] as String? ?? 'UNKNOWN').toUpperCase(),
+      status: (json['status'] as String? ?? 'UNKNOWN').toUpperCase(),
+      latitude: latitude.toDouble(),
+      longitude: longitude.toDouble(),
+      timestamp: timestamp,
+      description: json['description'] as String? ?? '',
+      locationName: json['location_name'] as String? ?? '',
+      source: json['source'] as String? ?? 'Unknown source',
       frp: (json['frp'] as num?)?.toDouble(),
       brightness: (json['brightness'] as num?)?.toDouble(),
       isLiveAnomaly: json['is_live_anomaly'] == true,

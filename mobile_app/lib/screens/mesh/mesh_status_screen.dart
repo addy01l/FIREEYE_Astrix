@@ -17,49 +17,6 @@ class MeshStatusScreen extends StatefulWidget {
 }
 
 class _MeshStatusScreenState extends State<MeshStatusScreen> {
-  void _triggerSimulatedPacket(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF13151B),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
-          side: const BorderSide(color: Color(0xFF232733)),
-        ),
-        title: Text('SIMULATE BLE RELAY HOP', style: AppTheme.mono.copyWith(fontSize: 14, fontWeight: FontWeight.w700)),
-        content: Text(
-          'This simulates receiving an offline SOS packet from nearby device "FE-NODE-ALPHA", testing multi-hop validation, TTL decrement, hop trail append, and store-and-forward relay.',
-          style: AppTheme.sans.copyWith(fontSize: 12, color: AppColors.textMuted),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('CANCEL'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.emergencyRed),
-            onPressed: () async {
-              Navigator.pop(ctx);
-              await context.read<MeshProvider>().testSimulateMultiHopRelay(
-                    testOriginId: 'FE-NODE-ALPHA',
-                    emergencyType: 'Trapped / Structural Collapse',
-                  );
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    backgroundColor: AppColors.safeGreen,
-                    content: Text('Simulated BLE packet received and relayed successfully!'),
-                  ),
-                );
-              }
-            },
-            child: const Text('INJECT PACKET'),
-          ),
-        ],
-      ),
-    );
-  }
-
   Future<void> _handleToggle(BuildContext context) async {
     final meshProvider = context.read<MeshProvider>();
     final isRunning = meshProvider.isMeshRunning;
@@ -314,16 +271,6 @@ class _MeshStatusScreenState extends State<MeshStatusScreen> {
                     style: AppTheme.mono.copyWith(fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 1, color: AppColors.textMuted),
                     overflow: TextOverflow.ellipsis,
                   ),
-                ),
-                const SizedBox(width: 8),
-                TextButton.icon(
-                  style: TextButton.styleFrom(
-                    visualDensity: VisualDensity.compact,
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  ),
-                  icon: const Icon(LucideIcons.playCircle, size: 12, color: AppColors.emergencyRed),
-                  label: Text('TEST RELAY', style: AppTheme.mono.copyWith(fontSize: 10, fontWeight: FontWeight.w800, color: AppColors.emergencyRed)),
-                  onPressed: () => _triggerSimulatedPacket(context),
                 ),
               ],
             ),

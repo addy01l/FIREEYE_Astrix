@@ -79,7 +79,11 @@ async def create_sos(
         tel = p_res.get("real_telemetry", {})
         weather_tag = f" [Real Weather: {tel.get('temperature_c')}°C, Rain: {tel.get('rainfall_24h_mm')}mm, Hazard: {tel.get('ml_hazard_level')}, OSRM Route: {tel.get('osrm_road_distance_km')}km to {tel.get('nearest_shelter')}]"
     except Exception:
-        computed_priority = 75.0
+        # Keep an emergency deliverable when external telemetry/ML is down,
+        # but make the fallback's limited basis explicit in the record.
+        reported_severity = (sos_in.severity or "").upper()
+        computed_priority = {"CRITICAL": 100.0, "HIGH": 75.0, "MEDIUM": 50.0, "LOW": 25.0}.get(reported_severity, 0.0)
+        weather_tag = " [Priority uses reported severity only; live telemetry scoring unavailable]"
 
     new_sos = SOSRequest(
         sos_code=sos_code,
@@ -146,7 +150,10 @@ async def create_sos(
 
 
 @router.get("/active", response_model=list[SOSResponse])
-def get_active_sos(db: Session = Depends(get_db)):
+def get_active_sos(
+    current_user: User = Depends(require_roles([UserRole.RESCUE, UserRole.ADMIN])),
+    db: Session = Depends(get_db),
+):
     """Retrieve all unresolved active SOS requests sorted by priority."""
     return (
         db.query(SOSRequest)
@@ -171,7 +178,11 @@ def get_my_sos_requests(
 
 
 @router.get("/{sos_id}", response_model=SOSResponse)
-def get_sos_by_id(sos_id: str, db: Session = Depends(get_db)):
+def get_sos_by_id(
+    sos_id: str,
+    current_user: User = Depends(require_roles([UserRole.RESCUE, UserRole.ADMIN])),
+    db: Session = Depends(get_db),
+):
     """Retrieve details for a single SOS request by ID or code."""
     query = db.query(SOSRequest)
     if str(sos_id).isdigit():
@@ -189,7 +200,7 @@ def get_sos_by_id(sos_id: str, db: Session = Depends(get_db)):
 async def update_sos_status(
     sos_id: str,
     status_update: SOSStatusUpdate,
-    current_user: Optional[User] = Depends(get_optional_user),
+    current_user: User = Depends(require_roles([UserRole.RESCUE, UserRole.ADMIN])),
     db: Session = Depends(get_db),
 ):
     """
@@ -207,7 +218,11 @@ async def update_sos_status(
         raise HTTPException(status_code=404, detail="SOS not found")
 
     old_status = sos.status
-    sos.status = status_update.status.upper()
+    allowed_statuses = {"PENDING", "ASSIGNED", "DISPATCHED", "RESCUED", "CANCELLED"}
+    new_status = status_update.status.upper()
+    if new_status not in allowed_statuses:
+        raise HTTPException(status_code=422, detail="Unsupported SOS status")
+    sos.status = new_status
     if status_update.assigned_team_id:
         sos.assigned_team_id = status_update.assigned_team_id
     if status_update.assigned_shelter_id:
@@ -293,6 +308,7 @@ def assign_rescue_team(
 async def receive_mesh_packet_sos(
     packet: MeshPacket,
     background_tasks: BackgroundTasks,
+    current_user: User = Depends(require_roles([UserRole.RESCUE, UserRole.ADMIN])),
     db: Session = Depends(get_db),
 ):
     """Receive store-and-forward mesh packet representing an offline SOS."""

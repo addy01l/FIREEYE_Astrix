@@ -1,4 +1,7 @@
 class ApiConfig {
+  static const supabaseUrl = String.fromEnvironment('SUPABASE_URL');
+  static const supabaseAnonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
+  static bool get hasSupabaseConfig => supabaseUrl.isNotEmpty && supabaseAnonKey.isNotEmpty;
   /// Base host configuration
   /// Priority:
   /// 1. Compile-time: --dart-define=BACKEND_BASE_URL=https://fireeye-astrix-backend.onrender.com
