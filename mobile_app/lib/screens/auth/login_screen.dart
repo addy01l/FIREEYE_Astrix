@@ -663,10 +663,11 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                       controller: _usernameController,
                       style: AppTheme.mono.copyWith(fontSize: 13),
                       decoration: const InputDecoration(
-                        labelText: 'Supabase account email',
+                        labelText: 'Email or Username',
+                        hintText: 'aditya@astrix.com or admin',
                         prefixIcon: Icon(LucideIcons.user, size: 16),
                       ),
-                      validator: (val) => val == null || !val.contains('@') ? 'Enter your account email' : null,
+                      validator: (val) => val == null || val.trim().isEmpty ? 'Enter email or username' : null,
                     ),
                     const SizedBox(height: 12),
 
