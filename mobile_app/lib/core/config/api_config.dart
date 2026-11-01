@@ -1,13 +1,17 @@
 class ApiConfig {
-  static const supabaseUrl = String.fromEnvironment('SUPABASE_URL');
+  static const supabaseUrl = String.fromEnvironment(
+    'SUPABASE_URL',
+    defaultValue: 'https://xwiwmwgyayqyhkfiinnv.supabase.co',
+  );
   static const supabaseAnonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
   static bool get hasSupabaseConfig => supabaseUrl.isNotEmpty && supabaseAnonKey.isNotEmpty;
+
   /// Base host configuration
   /// Priority:
-  /// 1. Compile-time: --dart-define=BACKEND_BASE_URL=https://fireeye-astrix-backend.onrender.com
-  /// 2. Live production default: https://fireeye-astrix-backend.onrender.com
+  /// 1. Compile-time: --dart-define=BACKEND_BASE_URL=https://hackathon-1-cs4a.onrender.com
+  /// 2. Live production default: https://hackathon-1-cs4a.onrender.com
   /// 3. Runtime configuration via Profile & Settings screen
-  static const String liveProductionUrl = 'https://fireeye-astrix-backend.onrender.com';
+  static const String liveProductionUrl = 'https://hackathon-1-cs4a.onrender.com';
 
   static String get defaultBaseUrl {
     const envUrl = String.fromEnvironment('BACKEND_BASE_URL');
