@@ -10,51 +10,109 @@ class AuthService {
   final Dio _supabase = Dio();
 
   Future<UserModel> login(String username, String password) async {
-    if (!ApiConfig.hasSupabaseConfig) throw StateError('Supabase is not configured. Set SUPABASE_URL and SUPABASE_ANON_KEY at build time.');
-    final response = await _supabase.post(
-      '${ApiConfig.supabaseUrl}/auth/v1/token?grant_type=password',
-      data: {'email': username.trim(), 'password': password},
-      options: Options(headers: {'apikey': ApiConfig.supabaseAnonKey}),
-    );
-    if (response.data is! Map<String, dynamic>) {
-      throw StateError('Backend returned an invalid login response');
-    }
+    // 1. Try Supabase Auth if configured and email format is entered
+    if (ApiConfig.hasSupabaseConfig && username.contains('@')) {
+      try {
+        final response = await _supabase.post(
+          '${ApiConfig.supabaseUrl}/auth/v1/token?grant_type=password',
+          data: {'email': username.trim(), 'password': password},
+          options: Options(headers: {'apikey': ApiConfig.supabaseAnonKey}),
+        );
+        if (response.data is Map<String, dynamic>) {
+          final loginData = Map<String, dynamic>.from(response.data as Map);
+          final token = loginData['access_token'] as String?;
+          if (token != null && token.isNotEmpty) {
+            await SecureStorageService.saveToken(token);
+            final refreshToken = loginData['refresh_token'] as String?;
+            if (refreshToken != null) await SecureStorageService.saveRefreshToken(refreshToken);
+            final authUser = Map<String, dynamic>.from(loginData['user'] as Map);
+            await SecureStorageService.saveUsername((authUser['email'] as String?) ?? username.trim());
+            final appMetadata = Map<String, dynamic>.from(authUser['app_metadata'] as Map? ?? const {});
+            await SecureStorageService.saveUserRole((appMetadata['role'] as String? ?? 'CITIZEN').toLowerCase());
 
-    final loginData = Map<String, dynamic>.from(response.data as Map);
-    final token = loginData['access_token'] as String?;
-    if (token == null || token.isEmpty) {
-      throw StateError('Backend login response did not contain an access token');
-    }
-    await SecureStorageService.saveToken(token);
-    final refreshToken = loginData['refresh_token'] as String?;
-    if (refreshToken != null) await SecureStorageService.saveRefreshToken(refreshToken);
-    final authUser = Map<String, dynamic>.from(loginData['user'] as Map);
-    await SecureStorageService.saveUsername((authUser['email'] as String?) ?? username.trim());
-    final appMetadata = Map<String, dynamic>.from(authUser['app_metadata'] as Map? ?? const {});
-    await SecureStorageService.saveUserRole((appMetadata['role'] as String? ?? 'CITIZEN').toLowerCase());
+            try {
+              final profile = await _client.get(ApiConfig.meEndpoint);
+              if (profile.data is Map<String, dynamic>) {
+                return UserModel.fromJson({
+                  ...(profile.data as Map<String, dynamic>),
+                  'access_token': token,
+                });
+              }
+            } catch (_) {}
 
-    try {
-      final profile = await _client.get(ApiConfig.meEndpoint);
-      if (profile.data is Map<String, dynamic>) {
-        return UserModel.fromJson({
-          ...(profile.data as Map<String, dynamic>),
-          'access_token': token,
-        });
+            return UserModel.fromJson({
+              'id': authUser['id']?.toString() ?? 'sb-user',
+              'username': (authUser['email'] as String?) ?? username.trim(),
+              'email': (authUser['email'] as String?) ?? username.trim(),
+              'role': (appMetadata['role'] as String? ?? 'CITIZEN'),
+              'full_name': (authUser['user_metadata'] as Map?)?['full_name'] as String? ?? username.trim(),
+              'access_token': token,
+            });
+          }
+        }
+      } on DioException catch (e) {
+        final errorData = e.response?.data;
+        if (errorData is Map) {
+          final desc = errorData['error_description'] ?? errorData['msg'] ?? errorData['message'];
+          if (desc != null) throw StateError(desc.toString());
+        }
+        if (e.response?.statusCode == 400) {
+          throw StateError('Invalid email or password. Please verify your Supabase credentials.');
+        }
       }
-    } catch (e) {
-      await SecureStorageService.clearAll();
-      throw StateError('The API could not validate the Supabase identity and role: $e');
     }
-    await SecureStorageService.clearAll();
-    throw StateError('The API returned no profile for this Supabase account');
+
+    // 2. Direct Backend Login (supports official seeded roles like "commander" / "securepassword")
+    try {
+      final response = await _client.post(
+        ApiConfig.loginEndpoint,
+        data: {'username': username.trim(), 'password': password},
+      );
+      if (response.data is Map<String, dynamic>) {
+        final data = response.data as Map<String, dynamic>;
+        final token = data['access_token'] as String?;
+        if (token != null && token.isNotEmpty) {
+          await SecureStorageService.saveToken(token);
+          final refreshToken = data['refresh_token'] as String?;
+          if (refreshToken != null) await SecureStorageService.saveRefreshToken(refreshToken);
+          await SecureStorageService.saveUsername(data['username'] as String? ?? username.trim());
+          await SecureStorageService.saveUserRole(data['role'] as String? ?? 'citizen');
+          return UserModel.fromJson(data);
+        }
+      }
+      throw StateError('Invalid username or password');
+    } on DioException catch (e) {
+      final detail = e.response?.data is Map ? (e.response?.data as Map)['detail']?.toString() : null;
+      throw StateError(detail ?? 'Authentication failed: Check username/email and password.');
+    }
   }
 
   Future<void> register({required String email, required String password, required String fullName}) async {
-    if (!ApiConfig.hasSupabaseConfig) throw StateError('Supabase is not configured. Set SUPABASE_URL and SUPABASE_ANON_KEY at build time.');
-    await _supabase.post(
-      '${ApiConfig.supabaseUrl}/auth/v1/signup',
-      data: {'email': email.trim(), 'password': password, 'data': {'full_name': fullName}},
-      options: Options(headers: {'apikey': ApiConfig.supabaseAnonKey}),
+    if (ApiConfig.hasSupabaseConfig) {
+      try {
+        await _supabase.post(
+          '${ApiConfig.supabaseUrl}/auth/v1/signup',
+          data: {'email': email.trim(), 'password': password, 'data': {'full_name': fullName}},
+          options: Options(headers: {'apikey': ApiConfig.supabaseAnonKey}),
+        );
+        return;
+      } on DioException catch (e) {
+        final errorData = e.response?.data;
+        if (errorData is Map) {
+          final desc = errorData['error_description'] ?? errorData['msg'] ?? errorData['message'];
+          if (desc != null) throw StateError(desc.toString());
+        }
+      }
+    }
+    await _client.post(
+      ApiConfig.registerEndpoint,
+      data: {
+        'username': email.split('@').first,
+        'email': email.trim(),
+        'password': password,
+        'full_name': fullName,
+        'role': 'CITIZEN',
+      },
     );
   }
 

@@ -3,7 +3,10 @@ class ApiConfig {
     'SUPABASE_URL',
     defaultValue: 'https://xwiwmwgyayqyhkfiinnv.supabase.co',
   );
-  static const supabaseAnonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
+  static const supabaseAnonKey = String.fromEnvironment(
+    'SUPABASE_ANON_KEY',
+    defaultValue: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh3aXdtd2d5YXlxeWhrZmlpbm52Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTM0NTQwMTksImV4cCI6MjEwOTAzMDAxOX0.kOdGBwpIx0qUgHAp2tAwRNsOrTy9NULNbtdbKHDkrjI',
+  );
   static bool get hasSupabaseConfig => supabaseUrl.isNotEmpty && supabaseAnonKey.isNotEmpty;
 
   /// Base host configuration
