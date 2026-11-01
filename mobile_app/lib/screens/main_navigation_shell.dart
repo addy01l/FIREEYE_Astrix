@@ -1,3 +1,5 @@
+import 'admin/admin_users_screen.dart';
+import 'citizen/citizen_navigation_shell.dart';
 import 'package:flutter/material.dart';
 
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -224,6 +226,10 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
     final alertProvider = context.watch<AlertProvider>();
 
     final authProvider = context.watch<AuthProvider>();
+
+    if (authProvider.isAuthenticated && !authProvider.isAdmin) {
+      return const CitizenNavigationShell();
+    }
 
 
 
@@ -604,6 +610,16 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
             const Divider(),
 
 
+
+            ListTile(
+              leading: const Icon(LucideIcons.users, size: 20, color: AppColors.safeGreen),
+              title: Text('User Management (RBAC)', style: AppTheme.mono.copyWith(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.safeGreen)),
+              subtitle: Text('Manage Citizen & Official Roles', style: AppTheme.sans.copyWith(fontSize: 11, color: AppColors.textMuted)),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminUsersScreen()));
+              },
+            ),
 
             // Auxiliary Operational Screens
 

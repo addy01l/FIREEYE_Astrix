@@ -2,6 +2,7 @@ from app.core.config import settings
 from app.core.security import get_password_hash
 from app.database import Base, SessionLocal
 from app.models.household import Household
+from app.models.profile import Profile
 from app.models.risk_zone import RiskZone
 from app.models.shelter import Shelter
 from app.models.user import User
@@ -64,6 +65,20 @@ def seed_hackathon_demo_data(db: Session, force_reset: bool = False):
         print("Created demo users (admin, commander, volunteer1, citizen1).")
     else:
         print("Users already seeded, preserving existing accounts.")
+
+    # Explicitly ensure profiles table has authoritative roles for existing Supabase users
+    admin_prof = db.query(Profile).filter(Profile.id == "7900f312-14ea-49d0-9e1b-626228307084").first()
+    if not admin_prof:
+        db.add(Profile(id="7900f312-14ea-49d0-9e1b-626228307084", role="admin"))
+    else:
+        admin_prof.role = "admin"
+
+    user_prof = db.query(Profile).filter(Profile.id == "38289592-1f93-498e-a862-5587b765da2e").first()
+    if not user_prof:
+        db.add(Profile(id="38289592-1f93-498e-a862-5587b765da2e", role="user"))
+    else:
+        user_prof.role = "user"
+    db.commit()
 
     # 2. Add Risk Zones (idempotent by zone_code)
     existing_zone = db.query(RiskZone).filter(RiskZone.zone_code == "ZONE-04-NORTH").first()

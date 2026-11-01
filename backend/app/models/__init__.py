@@ -1,4 +1,5 @@
 from app.models.user import User
+from app.models.profile import Profile
 from app.models.household import Household
 from app.models.sos import SOSRequest
 from app.models.risk_zone import RiskZone
@@ -9,6 +10,7 @@ from app.models.audit_event import AuditEvent
 
 __all__ = [
     "User",
+    "Profile",
     "Household",
     "SOSRequest",
     "RiskZone",

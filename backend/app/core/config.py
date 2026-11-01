@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
     SUPABASE_URL: str | None = os.getenv("SUPABASE_URL")
     SUPABASE_JWT_SECRET: str | None = os.getenv("SUPABASE_JWT_SECRET")
+    ADMIN_BOOTSTRAP_UUID: str = os.getenv("ADMIN_BOOTSTRAP_UUID", "7900f312-14ea-49d0-9e1b-626228307084")
     SEED_DEMO_DATA: bool = os.getenv("SEED_DEMO_DATA", "false").lower() == "true"
     
     # ML & Inference

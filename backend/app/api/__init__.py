@@ -8,6 +8,7 @@ from app.api import (
     routing,
     shelters,
     sos,
+    users,
     websocket,
 )
 from fastapi import APIRouter
@@ -15,6 +16,7 @@ from fastapi import APIRouter
 api_router = APIRouter()
 
 api_router.include_router(auth.router, prefix="/auth", tags=["Authentication"])
+api_router.include_router(users.router, prefix="/users", tags=["User Management"])
 api_router.include_router(
     disaster.router, prefix="/disaster", tags=["Disaster Risk & Prediction"]
 )

@@ -43,15 +43,18 @@ def register(user_in: UserRegister, db: Session = Depends(get_db)):
                 detail="Email already registered",
             )
 
-    normalized_role = (user_in.role or "CITIZEN").upper()
-    if normalized_role not in ["CITIZEN", "RESCUE", "VOLUNTEER", "ADMIN"]:
-        normalized_role = "CITIZEN"
+    # Public self-registration is strictly restricted from acquiring administrative privilege.
+    claimed_role = (user_in.role or "user").strip()
+    if claimed_role.lower() in ["admin", "commander"]:
+        assigned_role = "user"
+    else:
+        assigned_role = claimed_role
 
     new_user = User(
         username=user_in.username,
         email=user_in.email,
         hashed_password=get_password_hash(user_in.password),
-        role=normalized_role,
+        role=assigned_role,
         full_name=user_in.full_name,
         phone=user_in.phone,
         is_active=True,
@@ -156,4 +159,28 @@ def refresh_token(request: TokenRefreshRequest, db: Session = Depends(get_db)):
 @router.get("/me", response_model=UserResponse)
 def get_current_user_profile(current_user: User = Depends(get_current_active_user)):
     """Retrieve authenticated user's profile and assigned role."""
+    return current_user
+
+
+class ProfileUpdate(UserLogin.__base__):
+    full_name: str | None = None
+    phone: str | None = None
+
+
+@router.patch("/me", response_model=UserResponse)
+def update_current_user_profile(
+    profile_in: ProfileUpdate,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Update permitted profile information for the authenticated user.
+    Normal users can update full_name and phone. Role modifications are strictly prevented.
+    """
+    if profile_in.full_name is not None:
+        current_user.full_name = profile_in.full_name.strip()
+    if profile_in.phone is not None:
+        current_user.phone = profile_in.phone.strip()
+    db.commit()
+    db.refresh(current_user)
     return current_user

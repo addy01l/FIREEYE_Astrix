@@ -48,6 +48,8 @@ class ApiConfig {
   static String get householdsEndpoint => '/api/v1/households/';
   static String get sosEndpoint => '/api/v1/sos/';
   static String get activeSosEndpoint => '/api/v1/sos/active';
+  static String get mySosEndpoint => '/api/v1/sos/my';
+  static String get usersEndpoint => '/api/v1/users/';
   static String get priorityQueueEndpoint => '/api/v1/priority/queue';
   static String get routingEndpoint => '/api/v1/routing/safe-route';
   static String get rescueCentersEndpoint => sheltersEndpoint;

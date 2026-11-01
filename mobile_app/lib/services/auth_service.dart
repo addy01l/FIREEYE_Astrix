@@ -28,23 +28,42 @@ class AuthService {
             final authUser = Map<String, dynamic>.from(loginData['user'] as Map);
             await SecureStorageService.saveUsername((authUser['email'] as String?) ?? username.trim());
             final appMetadata = Map<String, dynamic>.from(authUser['app_metadata'] as Map? ?? const {});
-            await SecureStorageService.saveUserRole((appMetadata['role'] as String? ?? 'CITIZEN').toLowerCase());
+            String roleStr = (appMetadata['role'] as String? ?? 'user').toLowerCase();
 
             try {
               final profile = await _client.get(ApiConfig.meEndpoint);
               if (profile.data is Map<String, dynamic>) {
+                final data = profile.data as Map<String, dynamic>;
+                roleStr = (data['role'] as String? ?? 'user').toLowerCase();
+                await SecureStorageService.saveUserRole(roleStr);
                 return UserModel.fromJson({
-                  ...(profile.data as Map<String, dynamic>),
+                  ...data,
                   'access_token': token,
+                  'role': roleStr,
                 });
               }
-            } catch (_) {}
+            } catch (_) {
+              try {
+                final sbProfile = await _supabase.get(
+                  '/rest/v1/profiles?id=eq.&select=role',
+                  options: Options(headers: {
+                    'apikey': ApiConfig.supabaseAnonKey,
+                    'Authorization': 'Bearer ',
+                  }),
+                );
+                if (sbProfile.data is List && (sbProfile.data as List).isNotEmpty) {
+                  final row = (sbProfile.data as List).first as Map;
+                  roleStr = (row['role'] as String? ?? 'user').toLowerCase();
+                }
+              } catch (_) {}
+            }
 
+            await SecureStorageService.saveUserRole(roleStr);
             return UserModel.fromJson({
               'id': authUser['id']?.toString() ?? 'sb-user',
               'username': (authUser['email'] as String?) ?? username.trim(),
               'email': (authUser['email'] as String?) ?? username.trim(),
-              'role': (appMetadata['role'] as String? ?? 'CITIZEN'),
+              'role': roleStr,
               'full_name': (authUser['user_metadata'] as Map?)?['full_name'] as String? ?? username.trim(),
               'access_token': token,
             });
@@ -170,4 +189,20 @@ class AuthService {
     await SecureStorageService.clearAll();
   }
 
+  Future<UserModel> updateProfile({String? fullName, String? phone}) async {
+    final payload = <String, dynamic>{};
+    if (fullName != null) payload['full_name'] = fullName;
+    if (phone != null) payload['phone'] = phone;
+    final response = await _client.patch(
+      ApiConfig.meEndpoint,
+      data: payload,
+    );
+    if (response.data is Map<String, dynamic>) {
+      final json = Map<String, dynamic>.from(response.data as Map);
+      final token = await SecureStorageService.getToken();
+      if (token != null) json['access_token'] = token;
+      return UserModel.fromJson(json);
+    }
+    throw StateError('Failed to update profile');
+  }
 }
