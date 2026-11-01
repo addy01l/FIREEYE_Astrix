@@ -44,6 +44,10 @@ class Settings(BaseSettings):
     TELEGRAM_CHAT_ID: str | None = os.getenv("TELEGRAM_CHAT_ID")
     FCM_SERVER_KEY: str | None = os.getenv("FCM_SERVER_KEY")
 
+    # Groq AI Assistant
+    GROQ_API_KEY: str | None = os.getenv("GROQ_API_KEY")
+    GROQ_MODEL: str = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
+
     class Config:
         case_sensitive = True
         env_file = ".env"

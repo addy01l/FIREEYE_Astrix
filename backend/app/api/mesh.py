@@ -46,6 +46,18 @@ async def receive_mesh_packet(
             )
         )
 
+        try:
+            from app.services.ai_assistant_service import generate_and_save_ai_analysis_task
+            asyncio.create_task(
+                asyncio.to_thread(
+                    generate_and_save_ai_analysis_task,
+                    0,
+                    result["associated_sos_code"],
+                )
+            )
+        except Exception:
+            pass
+
     return MeshPacketAck(
         status=result["status"],
         message_id=result["message_id"],

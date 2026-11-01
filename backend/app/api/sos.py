@@ -23,6 +23,11 @@ from app.schemas.sos import (
     SOSResponse,
     SOSStatusUpdate,
 )
+from app.schemas.sos_ai_analysis import SOSAIAnalysisResponse
+from app.services.ai_assistant_service import (
+    generate_and_save_ai_analysis_task,
+    get_or_generate_sos_analysis,
+)
 from app.services.audit_service import record_audit_event
 from app.services.mesh_gateway import process_mesh_packet
 from app.services.priority_engine import compute_ranked_rescue_queue
@@ -142,6 +147,16 @@ async def create_sos(
             severity=new_sos.severity,
             location_str=f"{new_sos.latitude}, {new_sos.longitude}",
             message=f"SOS alert: {new_sos.emergency_type} - {new_sos.notes or 'Immediate rescue required'}",
+        )
+    except Exception:
+        pass
+
+    # Trigger Groq AI SOS Response analysis in background
+    try:
+        background_tasks.add_task(
+            generate_and_save_ai_analysis_task,
+            sos_id=new_sos.id,
+            sos_code=new_sos.sos_code,
         )
     except Exception:
         pass
@@ -337,9 +352,42 @@ async def receive_mesh_packet_sos(
         except Exception:
             pass
 
+        try:
+            background_tasks.add_task(
+                generate_and_save_ai_analysis_task,
+                sos_id=0,
+                sos_code=result["associated_sos_code"],
+            )
+        except Exception:
+            pass
+
     return MeshPacketAck(
         status=result["status"],
         message_id=result["message_id"],
         action_taken=result["action_taken"],
         associated_sos_code=result["associated_sos_code"],
     )
+
+
+@router.get("/{sos_id}/ai-analysis", response_model=SOSAIAnalysisResponse)
+def get_sos_ai_analysis(
+    sos_id: str,
+    current_user: Optional[User] = Depends(get_optional_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Retrieve or generate Groq AI tactical response analysis for an SOS request.
+    Strictly advisory for human rescuer review.
+    """
+    query = db.query(SOSRequest)
+    if str(sos_id).isdigit():
+        sos = query.filter(SOSRequest.id == int(sos_id)).first()
+    else:
+        sos = query.filter(SOSRequest.sos_code == sos_id).first()
+    if not sos:
+        sos = query.filter(SOSRequest.sos_code.ilike(f"%{sos_id}%")).first()
+    if not sos:
+        raise HTTPException(status_code=404, detail="SOS not found")
+
+    return get_or_generate_sos_analysis(db, sos)
+
