@@ -19,3 +19,4 @@ flutter build apk --release `
 if ($LASTEXITCODE -eq 0) {
     Write-Host "`n[SUCCESS] APK created at: mobile_app\build\app\outputs\flutter-apk\app-release.apk" -ForegroundColor Green
 }
+

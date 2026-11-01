@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
@@ -42,6 +43,14 @@ class _RescueRouteScreenState extends State<RescueRouteScreen> {
       final position = await Geolocator.getCurrentPosition(locationSettings: const LocationSettings(accuracy: LocationAccuracy.high, timeLimit: Duration(seconds: 15)));
       final body = <String, dynamic>{'origin': {'lat': position.latitude, 'lng': position.longitude}, 'avoid_high_risk': true};
       if (widget.routeToShelter) {
+        final sheltersResponse = await ApiClient.instance.get('/api/v1/shelters/');
+        final shelters = sheltersResponse.data as List? ?? const [];
+        final hasAvailableShelter = shelters.whereType<Map>().any((shelter) =>
+            shelter['is_safe'] == true &&
+            (shelter['available_beds'] as num? ?? 0) > 0);
+        if (!hasAvailableShelter) {
+          throw StateError('No safe shelter with available capacity is registered. Your SOS remains active; contact command center for shelter guidance.');
+        }
         // Omitting destination asks the backend for the nearest available shelter.
       } else {
         body['destination'] = {'lat': widget.incident.latitude, 'lng': widget.incident.longitude};
@@ -56,7 +65,15 @@ class _RescueRouteScreenState extends State<RescueRouteScreen> {
       }
       if (mounted) setState(() { _route = data; _loading = false; });
     } catch (e) {
-      if (mounted) setState(() { _error = e.toString().replaceFirst('Bad state: ', ''); _loading = false; });
+      final message = e is DioException
+          ? ((e.response?.data is Map ? (e.response?.data as Map)['detail']?.toString() : null) ??
+              (e.response?.statusCode == 404
+                  ? 'No operational shelter is registered. Your SOS remains active; contact command center for guidance.'
+                  : e.response?.statusCode == 503
+                  ? 'Shelter routing is temporarily unavailable. Your SOS remains active.'
+                  : e.message ?? 'Shelter routing is unavailable.'))
+          : e.toString().replaceFirst('Bad state: ', '');
+      if (mounted) setState(() { _error = message; _loading = false; });
     }
   }
 

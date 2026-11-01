@@ -33,7 +33,7 @@ def get_safe_route(route_req: RouteRequest, db: Session = Depends(get_db)):
             avoid_high_risk=route_req.avoid_high_risk,
         )
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
 
 @router.post("/network-route", response_model=NetworkRouteResponse)

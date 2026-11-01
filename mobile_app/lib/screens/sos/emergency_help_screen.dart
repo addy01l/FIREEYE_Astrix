@@ -108,6 +108,8 @@ class _EmergencyHelpScreenState extends State<EmergencyHelpScreen> with SingleTi
 
   bool _meshAdvertising = false;
 
+  IncidentModel? _activeIncident;
+
 
 
   StreamSubscription? _meshAlertSub;
@@ -562,6 +564,7 @@ _isSosActive = true;
         _beaconTime = timestamp;
         _sosCloudAcknowledged = submitted['is_offline'] != true;
         _meshAdvertising = meshQueued && MeshManager.instance.isMeshRunning;
+        _activeIncident = incident;
       });
     }
 
@@ -608,10 +611,6 @@ _isSosActive = true;
       );
 
     } catch (_) {}
-
-    await Navigator.push(context, MaterialPageRoute(
-      builder: (_) => RescueRouteScreen(incident: incident, routeToShelter: true),
-    ));
 
   }
 
@@ -2068,6 +2067,20 @@ _isSosActive = true;
           const SizedBox(height: 20),
 
 
+
+          if (_activeIncident != null) ...[
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                icon: const Icon(LucideIcons.map),
+                label: const Text('OPTIONAL: SHOW NEAREST SHELTER ROUTE'),
+                onPressed: () => Navigator.push(context, MaterialPageRoute(
+                  builder: (_) => RescueRouteScreen(incident: _activeIncident!, routeToShelter: true),
+                )),
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
 
           // Cancel Beacon button
 
