@@ -10,7 +10,6 @@ import '../../providers/incident_provider.dart';
 import '../../providers/shelter_provider.dart';
 import '../../providers/victim_provider.dart';
 import '../../services/mesh/mesh_manager.dart';
-import '../citizen/citizen_navigation_shell.dart';
 import '../main_navigation_shell.dart';
 import '../sos/emergency_help_screen.dart';
 
@@ -120,17 +119,10 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
         context.read<VictimProvider>().fetchVictims();
         MeshManager.instance.startMesh();
       } catch (_) {}
-      if (authProvider.isAdmin) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const MainNavigationShell()),
-        );
-      } else {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const CitizenNavigationShell()),
-        );
-      }
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const MainNavigationShell()),
+      );
     }
   }
 

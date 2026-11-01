@@ -15,20 +15,16 @@ enum UserRole {
         return UserRole.responder;
       case 'volunteer':
         return UserRole.volunteer;
-      case 'user':
       case 'citizen':
       default:
         return UserRole.citizen;
     }
   }
 
-  bool get isAdmin => this == UserRole.commander || this == UserRole.responder;
-  bool get isCitizen => !isAdmin;
-
   String get displayName {
     switch (this) {
       case UserRole.commander:
-        return 'Incident Commander (Admin)';
+        return 'Incident Commander';
       case UserRole.responder:
         return 'Field Responder';
       case UserRole.volunteer:

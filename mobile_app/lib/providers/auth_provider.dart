@@ -13,9 +13,8 @@ class AuthProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   bool get isAuthenticated => _currentUser != null;
-  UserRole get currentRole => _currentUser?.role ?? UserRole.citizen;
-  bool get isAdmin => _currentUser?.role.isAdmin ?? false;
-  bool get isCitizen => _currentUser?.role.isCitizen ?? true;
+  bool get isAdmin => true;
+  UserRole get currentRole => _currentUser?.role ?? UserRole.commander;
 
   AuthProvider() {
     restoreSession();
@@ -41,25 +40,6 @@ class AuthProvider extends ChangeNotifier {
     } catch (e) {
       _isLoading = false;
       _errorMessage = 'Authentication failed: $e';
-      notifyListeners();
-      return false;
-    }
-  }
-
-  Future<bool> updateProfile({String? fullName, String? phone}) async {
-    _isLoading = true;
-    _errorMessage = null;
-    notifyListeners();
-
-    try {
-      final updated = await _authService.updateProfile(fullName: fullName, phone: phone);
-      _currentUser = updated;
-      _isLoading = false;
-      notifyListeners();
-      return true;
-    } catch (e) {
-      _isLoading = false;
-      _errorMessage = 'Profile update failed: $e';
       notifyListeners();
       return false;
     }

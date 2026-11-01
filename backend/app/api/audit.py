@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from typing import Optional
 
-from app.core.permissions import require_admin
+from app.core.permissions import UserRole, require_roles
 from app.models.user import User
 from app.database import get_db
 from app.models.audit_event import AuditEvent
@@ -16,7 +16,7 @@ def get_audit_events(
     limit: int = Query(default=100, le=500),
     action: Optional[str] = None,
     actor: Optional[str] = None,
-    current_user: User = Depends(require_admin),
+    current_user: User = Depends(require_roles([UserRole.ADMIN])),
     db: Session = Depends(get_db),
 ):
     """Retrieve system audit trail records (Admin / Oversight)."""

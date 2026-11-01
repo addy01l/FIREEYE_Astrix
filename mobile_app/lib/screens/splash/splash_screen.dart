@@ -6,7 +6,6 @@ import '../../core/theme/app_theme.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/brand_logo.dart';
 import '../auth/login_screen.dart';
-import '../citizen/citizen_navigation_shell.dart';
 import '../main_navigation_shell.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -29,17 +28,10 @@ class _SplashScreenState extends State<SplashScreen> {
 
     final authProvider = context.read<AuthProvider>();
     if (authProvider.isAuthenticated) {
-      if (authProvider.isAdmin) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const MainNavigationShell()),
-        );
-      } else {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const CitizenNavigationShell()),
-        );
-      }
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const MainNavigationShell()),
+      );
     } else {
       Navigator.pushReplacement(
         context,
@@ -91,3 +83,4 @@ class _SplashScreenState extends State<SplashScreen> {
     );
   }
 }
+

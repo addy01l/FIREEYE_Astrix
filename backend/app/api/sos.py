@@ -9,7 +9,6 @@ from app.core.permissions import (
     get_current_active_user,
     get_optional_user,
     require_roles,
-    require_admin,
 )
 from app.database import get_db
 from app.models.household import Household
@@ -152,22 +151,16 @@ async def create_sos(
 
 @router.get("/active", response_model=list[SOSResponse])
 def get_active_sos(
-    current_user: User = Depends(get_current_active_user),
+    current_user: Optional[User] = Depends(get_optional_user),
     db: Session = Depends(get_db),
 ):
-    """
-    Retrieve unresolved active SOS requests.
-    Admins receive all active emergencies across all sectors.
-    Normal users receive only active emergencies they initiated.
-    """
-    query = db.query(SOSRequest).filter(
-        SOSRequest.status.in_(["PENDING", "ASSIGNED", "DISPATCHED"])
+    """Retrieve all unresolved active SOS requests sorted by priority."""
+    return (
+        db.query(SOSRequest)
+        .filter(SOSRequest.status.in_(["PENDING", "ASSIGNED", "DISPATCHED"]))
+        .order_by(SOSRequest.priority_score.desc())
+        .all()
     )
-    is_admin = (current_user.role or "").lower() in ["admin", "commander"]
-    if not is_admin:
-        query = query.filter(SOSRequest.user_id == current_user.id)
-
-    return query.order_by(SOSRequest.priority_score.desc()).all()
 
 
 @router.get("/my", response_model=list[SOSResponse])
@@ -187,14 +180,10 @@ def get_my_sos_requests(
 @router.get("/{sos_id}", response_model=SOSResponse)
 def get_sos_by_id(
     sos_id: str,
-    current_user: User = Depends(get_current_active_user),
+    current_user: Optional[User] = Depends(get_optional_user),
     db: Session = Depends(get_db),
 ):
-    """
-    Retrieve details for a single SOS request by ID or code.
-    Admins can view any SOS report.
-    Normal users can view only their own SOS; attempting to view another user's SOS returns 403 Forbidden.
-    """
+    """Retrieve details for a single SOS request by ID or code."""
     query = db.query(SOSRequest)
     if str(sos_id).isdigit():
         sos = query.filter(SOSRequest.id == int(sos_id)).first()
@@ -204,14 +193,6 @@ def get_sos_by_id(
         sos = query.filter(SOSRequest.sos_code.ilike(f"%{sos_id}%")).first()
     if not sos:
         raise HTTPException(status_code=404, detail="SOS not found")
-
-    is_admin = (current_user.role or "").lower() in ["admin", "commander"]
-    if not is_admin and sos.user_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access denied: You can only view your own SOS requests",
-        )
-
     return sos
 
 
@@ -219,11 +200,11 @@ def get_sos_by_id(
 async def update_sos_status(
     sos_id: str,
     status_update: SOSStatusUpdate,
-    current_user: User = Depends(require_admin),
+    current_user: User = Depends(require_roles([UserRole.RESCUE, UserRole.ADMIN])),
     db: Session = Depends(get_db),
 ):
     """
-    [ADMIN ONLY] Update the triage or rescue operational status of an SOS request.
+    Update the triage or rescue operational status of an SOS request.
     Allowed statuses: PENDING, ASSIGNED, DISPATCHED, RESCUED, CANCELLED.
     """
     query = db.query(SOSRequest)
@@ -264,7 +245,7 @@ async def update_sos_status(
         db=db,
         action="SOS_STATUS_UPDATED",
         actor_username=current_user.username if current_user else "DISPATCHER",
-        actor_role=current_user.role if current_user else "ADMIN",
+        actor_role=current_user.role if current_user else "RESCUE",
         resource_type="SOS",
         resource_id=sos.sos_code,
         details=f"Status changed from {old_status} to {sos.status}",
@@ -277,7 +258,7 @@ async def update_sos_status(
 def assign_rescue_team(
     sos_id: int,
     assignment_in: SOSAssignRequest,
-    current_user: User = Depends(require_admin),
+    current_user: User = Depends(require_roles([UserRole.RESCUE, UserRole.ADMIN])),
     db: Session = Depends(get_db),
 ):
     """Assign a rescue team or responder to an active SOS request."""

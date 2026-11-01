@@ -55,51 +55,6 @@ class SosService {
     }
   }
 
-  Future<List<Map<String, dynamic>>> getMySosRequests() async {
-    try {
-      final response = await _client.get(ApiConfig.mySosEndpoint);
-      if (response.data is List) {
-        return (response.data as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
-      }
-      return [];
-    } catch (_) {
-      return [];
-    }
-  }
-
-  Future<List<Map<String, dynamic>>> getActiveSosRequests() async {
-    try {
-      final response = await _client.get(ApiConfig.activeSosEndpoint);
-      if (response.data is List) {
-        return (response.data as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
-      }
-      return [];
-    } catch (_) {
-      return [];
-    }
-  }
-
-  Future<Map<String, dynamic>> updateSosStatus(
-    String sosId,
-    String status, {
-    int? assignedTeamId,
-    int? assignedShelterId,
-    String? notes,
-  }) async {
-    final payload = <String, dynamic>{'status': status.toUpperCase()};
-    if (assignedTeamId != null) payload['assigned_team_id'] = assignedTeamId;
-    if (assignedShelterId != null) payload['assigned_shelter_id'] = assignedShelterId;
-    if (notes != null) payload['notes'] = notes;
-    final response = await _client.patch(
-      '${ApiConfig.sosEndpoint}$sosId/status',
-      data: payload,
-    );
-    if (response.data is Map<String, dynamic>) {
-      return response.data as Map<String, dynamic>;
-    }
-    throw StateError('Failed to update SOS status');
-  }
-
   Future<void> _queueOfflineSos(Map<String, dynamic> item) async {
     try {
       final sp = await SharedPreferences.getInstance();

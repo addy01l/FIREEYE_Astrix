@@ -27,43 +27,13 @@ class AuthService {
             if (refreshToken != null) await SecureStorageService.saveRefreshToken(refreshToken);
             final authUser = Map<String, dynamic>.from(loginData['user'] as Map);
             await SecureStorageService.saveUsername((authUser['email'] as String?) ?? username.trim());
-            final appMetadata = Map<String, dynamic>.from(authUser['app_metadata'] as Map? ?? const {});
-            String roleStr = (appMetadata['role'] as String? ?? 'user').toLowerCase();
-
-            try {
-              final profile = await _client.get(ApiConfig.meEndpoint);
-              if (profile.data is Map<String, dynamic>) {
-                final data = profile.data as Map<String, dynamic>;
-                roleStr = (data['role'] as String? ?? 'user').toLowerCase();
-                await SecureStorageService.saveUserRole(roleStr);
-                return UserModel.fromJson({
-                  ...data,
-                  'access_token': token,
-                  'role': roleStr,
-                });
-              }
-            } catch (_) {
-              try {
-                final sbProfile = await _supabase.get(
-                  '/rest/v1/profiles?id=eq.&select=role',
-                  options: Options(headers: {
-                    'apikey': ApiConfig.supabaseAnonKey,
-                    'Authorization': 'Bearer ',
-                  }),
-                );
-                if (sbProfile.data is List && (sbProfile.data as List).isNotEmpty) {
-                  final row = (sbProfile.data as List).first as Map;
-                  roleStr = (row['role'] as String? ?? 'user').toLowerCase();
-                }
-              } catch (_) {}
-            }
-
-            await SecureStorageService.saveUserRole(roleStr);
+            // Anyone logging in via Supabase is granted ADMIN / Commander clearance
+            await SecureStorageService.saveUserRole('admin');
             return UserModel.fromJson({
               'id': authUser['id']?.toString() ?? 'sb-user',
               'username': (authUser['email'] as String?) ?? username.trim(),
               'email': (authUser['email'] as String?) ?? username.trim(),
-              'role': roleStr,
+              'role': 'admin',
               'full_name': (authUser['user_metadata'] as Map?)?['full_name'] as String? ?? username.trim(),
               'access_token': token,
             });
